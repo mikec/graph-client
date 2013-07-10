@@ -1,6 +1,20 @@
-var graphsvc = require('./');
+var graphsvc = require('graphsvc');
 
 var app = graphsvc("http://localhost:7474");
+
+//allow cross-domain access
+app.use(function(req, res, next) {
+	//set response header to allow cross-domain requests
+	res.set('Access-Control-Allow-Origin', '*');
+	res.set('Access-Control-Allow-Methods', 'GET,POST,DELETE');
+	res.set('Access-Control-Allow-Headers', 'accept, origin, content-type');
+
+	if(req && req.method == 'OPTIONS') {
+		res.send(200);
+	}
+
+	next();
+});
 
 app.endpoint("thing")
    .endpoint("user", {"key": "fbid"})
