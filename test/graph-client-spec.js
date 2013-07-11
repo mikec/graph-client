@@ -36,6 +36,13 @@ describe('Defining an endpoint named \'user\'', function() {
 		expect(User.create).toBeDefined();
 	});
 
+	it('should define one entity named user', function() {
+		expect(GC.entities['user']).toBeDefined();
+		var i = 0;
+		for(var e in GC.entities) i++;
+		expect(i).toBe(1);
+	});
+
 	describe('Creating a user', function() {
 
 		var user;
@@ -234,6 +241,19 @@ describe('Defining a band and a user endpoint, with a connection between them', 
 		expect(Band.create).toBeDefined();
 	});
 
+	it('should define an entity named user and an entity named band', function() {
+		expect(GC.entities['user']).toBeDefined();
+		expect(GC.entities['band']).toBeDefined();
+		var i = 0;
+		for(var e in GC.entities) i++;
+		expect(i).toBe(2);
+	});
+
+	it('should define a start and an end connection property', function() {
+		expect(GC.connectionProperties['user'].length).toBe(1);
+		expect(GC.connectionProperties['band'].length).toBe(1);
+	});
+
 	describe('Creating a band and a user', function() {
 
 		var user, band;
@@ -307,6 +327,79 @@ describe('Defining a band and a user endpoint, with a connection between them', 
 				runs(function() {
 					expect(u.id).toBeGreaterThan(0);
 					expect(b.id).toBeGreaterThan(0);
+				});
+
+			});
+
+			describe('Connecting the user and the band', function() {
+
+				var u2, b2;
+
+				beforeEach(function() {
+					var done = false;
+					runs(function() {
+						u.bands.$connect(b, function() {
+							u2 = User.get(u.id, {includeConnections:true}, function() {
+								b2 = Band.get(b.id, {includeConnections:true}, function() {
+									done = true;
+								});
+							});
+						});
+					});
+					waitsFor(function() {
+						return done;
+					}, 'service call to be done', _asyncTimeout);
+				});
+
+				it('should populate the connection properties on existing resources', function() {
+					runs(function() {
+						expect(u.bands.data.length).toBe(1);
+						expect(b.members.data.length).toBe(1);
+					});
+				});
+
+				it('should populate the connection properties when getting new resources from the database', function() {
+					runs(function() {
+						expect(u2.bands.data.length).toBe(1);
+						expect(b2.members.data.length).toBe(1);
+					});
+				});
+
+				it('should populate the connection properties with resources', function() {
+					runs(function() {
+						expect(u2.bands.data[0].$save).toBeDefined();
+						expect(b2.members.data[0].$save).toBeDefined();
+					});
+				});
+
+				describe('Getting the user and the band using .getAll', function() {
+
+					beforeEach(function() {
+						var done = false;
+						runs(function() {
+							u2 = User.getAll(u.id, function() {
+								b2 = Band.getAll(b.id, function() {
+									done = true;
+								});
+							});
+						});
+						waitsFor(function() { return done; }, 'service call to be done', _asyncTimeout);
+					});
+					
+					it('should populate the connection properties when getting new resources from the database', function() {
+						runs(function() {
+							expect(u2.bands.data.length).toBe(1);
+							expect(b2.members.data.length).toBe(1);
+						});
+					});
+
+					it('should populate the connection properties with resources', function() {
+						runs(function() {
+							expect(u2.bands.data[0].$save).toBeDefined();
+							expect(b2.members.data[0].$save).toBeDefined();
+						});
+					});
+
 				});
 
 			});

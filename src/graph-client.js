@@ -2,7 +2,8 @@
 
 	window.GC = function GC() { }
 
-	var connectionProperties = {};
+	var entities = GC.entities = {};
+	var connectionProperties = GC.connectionProperties = {};
 
 	GC.setup = function(params) {
 		if(params) {
@@ -31,6 +32,9 @@
 	function defineEntity(entityName, pluralEntityName) {
 
 		var endpointName = (pluralEntityName ? pluralEntityName : entityName+'s');
+		entities[entityName] = {
+			endpoint: endpointName
+		}
 
 		window.GraphClientResource = function GraphClientResource() {}
 
@@ -52,15 +56,68 @@
 
 			return res;
 		}
-		GraphClientResource.get = function(id, success, error) {
+		GraphClientResource.getAll = function() {
+			var id = arguments[0];
+			var options, success, error;
+			if(typeof(arguments[1]) == 'function') {
+				success = arguments[1]; error = arguments[2];
+			} else {
+				options = arguments[1]; success = arguments[2]; error = arguments[3];
+			}
+			if(!options) options = {};
+			$.extend(options, {includeConnections:true})
+			return this.get(id, options, success, error);
+		}
+		GraphClientResource.get = function() {
+			var id = arguments[0];
+			var options, success, error;
+			if(typeof(arguments[1]) == 'function') {
+				success = arguments[1]; error = arguments[2];
+			} else {
+				options = arguments[1]; success = arguments[2]; error = arguments[3];
+			}
+
 			var res = graphClientResourceFactory(entityName);
+
+			var url = GC.rootUrl + '/' + endpointName + '/' + id;
+
+			//add included connections to the url, if option is set
+			var connPropResources = [];
+			if(options && options.includeConnections) {
+				var includeQs = '';
+				for(var propEntityName in connectionProperties[entityName]) {
+					var connProp = connectionProperties[entityName][propEntityName].property;
+					connPropResources.push({
+						propertyName: connProp,
+						resource: graphClientResourceFactory(propEntityName)
+					});
+					includeQs += connProp + ',';
+				}
+				if(includeQs.length > 0) {
+					includeQs = '?include=' + includeQs;
+					includeQs = includeQs.substr(0, includeQs.length - 1);
+					url += includeQs;
+				}
+			}
 
 			$.ajax({
 			  type: "GET",
-			  url: GC.rootUrl + '/' + endpointName + '/' + id,
+			  url: url
 			}).done(function(data) {
 				$.extend(res, data);
 				res.__setState();
+				//convert connected properties to resources
+				for(var i in connPropResources) {
+					var propResObj = connPropResources[i];
+					if(res[propResObj.propertyName] && res[propResObj.propertyName].data && res[propResObj.propertyName].data.length > 0) {
+						for(var j in res[propResObj.propertyName].data) {
+							var propRes = res[propResObj.propertyName].data[j];
+							if(!(propRes instanceof GraphClientResource)) {
+								$.extend(propRes, propResObj.resource);
+							}
+						}
+					}
+				}
 				if(success) success(data);
 			}).error(function(err) {
 				if(error) error(err);
@@ -139,20 +196,68 @@
 	function graphClientResourceFactory(entityName) {
 		var res = new GraphClientResource();
 		for(var i in connectionProperties[entityName]) {
-			var prop = connectionProperties[entityName][i];
-			res[prop] = [];
-			res[prop].$connect = function() {
+			var connProp = connectionProperties[entityName][i];
+			res[connProp.property] = {};
+			res[connProp.property].data = [];
+			res[connProp.property].$connect = function(connRes, success, error) {
+				var d;
+				if(connRes.id > 0) {
+					d = { id: connRes.id };
+				}
 
+				//add connections to start and end entities
+				res[connProp.property].data.push(connRes);
+				connRes[connProp.connectedEntityProperty].data.push(res);
+
+				$.ajax({
+				  type: "POST",
+				  url: GC.rootUrl + '/' + entities[entityName].endpoint + '/' + res.id + '/' + connProp.property,
+				  data: d
+				}).done(function(d) {
+					if(success) success(d);
+				}).error(function(err) {
+					if(error) error(err);
+				});
 			}
 		}
 		return res;
 	}
 
 	function defineConnection(startConn, endConn) {
-		if(!connectionProperties[startConn.entity]) connectionProperties[startConn.entity] = [];
-		if(!contains(connectionProperties[startConn.entity], startConn.property)) connectionProperties[startConn.entity].push(startConn.property);		
+		if(!connectionProperties[startConn.entity]) connectionProperties[startConn.entity] = [];	
 		if(!connectionProperties[endConn.entity]) connectionProperties[endConn.entity] = [];
-		if(!contains(connectionProperties[endConn.entity], endConn.property)) connectionProperties[endConn.entity].push(endConn.property);
+
+		var connPropExists = false;
+		for(var i in connectionProperties[startConn.entity]) {
+			var propObj = connectionProperties[startConn.entity][i];
+			if(propObj.property == startConn.property) {
+				connPropExists = true;
+				break;
+			}
+		}
+		if(!connPropExists) {
+			connectionProperties[startConn.entity].push({
+				property: startConn.property,
+				connectedEntity: endConn.entity,
+				connectedEntityProperty: endConn.property
+			});	
+		}
+
+		connPropExists = false;
+		for(var i in connectionProperties[endConn.entity]) {
+			var propObj = connectionProperties[endConn.entity][i];
+			if(propObj.property == endConn.property) {
+				connPropExists = true;
+				break;
+			}
+		}
+		if(!connPropExists) {
+			connectionProperties[endConn.entity].push({
+				property: endConn.property,
+				connectedEntity: startConn.entity,
+				connectedEntityProperty: startConn.property
+			});	
+		}
 	}
 
 	function capitalize(string)
@@ -165,6 +270,10 @@
 			if(array[i] == item) return true;
 		}
 		return false;
+	}
+
+	function isSimpleProp(prop) {
+		return (typeof(prop) != 'object' && typeof(prop) != 'function');
 	}
 
 })(window);
