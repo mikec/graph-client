@@ -17,11 +17,11 @@ app.use(function(req, res, next) {
 });
 
 app.endpoint("thing")
-   .endpoint("user", {"key": "fbid"})
-   .endpoint("band", {"key": "fbid"})
-   .endpoint("song", {"key": "scid"})
+   .endpoint("user")
+   .endpoint("band")
+   .endpoint("song")
    .endpoint("genre", {"key": "name"})
-   .endpoint("person", {"key": "fbid", "collectionName": "people"})
+   .endpoint("person", {"collectionName": "people"})
    .endpoint("user.bands", "band.members", "is_member_of")	
    .endpoint("user.friends", "is_friends_with")
    .endpoint("thing.parts", "has_part")
