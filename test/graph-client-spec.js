@@ -367,8 +367,8 @@ describe('Defining a band and a user endpoint, with a connection between them', 
 
 				it('should populate the connection properties with resources', function() {
 					runs(function() {
-						expect(u2.bands.data[0].$save).toBeDefined();
-						expect(b2.members.data[0].$save).toBeDefined();
+						expect(u2.bands.data[0].resource.$save).toBeDefined();
+						expect(b2.members.data[0].resource.$save).toBeDefined();
 					});
 				});
 
@@ -395,8 +395,126 @@ describe('Defining a band and a user endpoint, with a connection between them', 
 
 					it('should populate the connection properties with resources', function() {
 						runs(function() {
-							expect(u2.bands.data[0].$save).toBeDefined();
-							expect(b2.members.data[0].$save).toBeDefined();
+							expect(u2.bands.data[0].resource.$save).toBeDefined();
+							expect(b2.members.data[0].resource.$save).toBeDefined();
+						});
+					});
+
+				});
+
+				describe('Calling connect on objects that are already connected', function() {
+
+					var done = false;
+					beforeEach(function() {
+						runs(function() {
+							u.bands.$connect(b, function() {
+								done = true;
+							}, function(err) {
+								done = true;
+							});
+						});
+					});
+
+					it('should only have one object in the connection property array before result is returned', function() {
+						expect(u.bands.data.length).toBe(1);
+						expect(b.members.data.length).toBe(1);
+					});
+
+					it('should only have one object in the connection property array after result is returned', function() {
+						waitsFor(function() { return done; }, 'service call to be done', _asyncTimeout);
+						expect(u.bands.data.length).toBe(1);
+						expect(b.members.data.length).toBe(1);
+					});					
+
+				});
+
+				describe('Perform a $sync on a resource with connections', function() {
+					
+					var done = false;
+					beforeEach(function() {
+						runs(function() {
+							u.$sync(function() {
+								done = true;
+							});
+						});
+						waitsFor(function() { return done; }, 'service call to be done', _asyncTimeout);
+					});
+
+					it('should maintain the original connection properties on the resource', function() {
+						runs(function() {
+							expect(u.bands.data.length).toBe(1);
+						});
+					});
+
+				});
+
+			});
+
+			describe('Connecting the user and the band with relationship data', function() {
+
+				var u2, b2;
+
+				it('should add the relationship data to connections on both resource before service call', function() {
+					u.bands.$connect(b, { instrument: 'drums' });
+					expect(u.bands.data[0].relationship.instrument).toBe('drums');
+					expect(b.members.data[0].relationship.instrument).toBe('drums');
+				});
+
+				it('should return relationship data when getting the connected objects', function() {
+					var done = false;
+					runs(function() {
+						u.bands.$connect(b, { instrument: 'drums' }, function() {
+							u2 = User.getAll(u.id, function() {
+								b2 = Band.getAll(b.id, function() {
+									done = true;
+								});
+							});
+						});
+					});
+					waitsFor(function() { return done; }, 'service call to be done', _asyncTimeout);
+					runs(function() {
+						expect(u2.bands.data[0].relationship.instrument).toBe('drums');
+						expect(b2.members.data[0].relationship.instrument).toBe('drums');
+					});
+				});
+
+				describe('Updating the properties of a relationship', function() {
+
+					beforeEach(function() {
+						var done = false;
+						runs(function() {
+							u.bands.$connect(b, { instrument: 'drums' }, function() {
+								done = true;
+							});
+						});
+						waitsFor(function() { return done; }, 'service call to be done', _asyncTimeout);
+					});
+
+					it('should update properties before service call', function() {
+						u.bands.$connect(b, { instrument: 'guitar', memberSince: 'last week' });
+						expect(u.bands.data[0].relationship.instrument).toBe('guitar');
+						expect(b.members.data[0].relationship.instrument).toBe('guitar');
+						expect(u.bands.data[0].relationship.memberSince).toBe('last week');
+						expect(b.members.data[0].relationship.memberSince).toBe('last week');
+					});
+
+					it('should update properties after service call', function() {
+						var done = false;
+						runs(function() {
+							u.bands.$connect(b, { instrument: 'guitar', memberSince: 'last week' }, function() {
+								u2 = User.getAll(u.id, function() {
+									b2 = Band.getAll(b.id, function() {
+										done = true;
+									});
+								});
+							});
+						});
+						waitsFor(function() { return done; }, 'service call to be done', _asyncTimeout);
+						runs(function() {
+							expect(u2.bands.data[0].relationship.instrument).toBe('guitar');
+							expect(b2.members.data[0].relationship.instrument).toBe('guitar');
+							expect(u2.bands.data[0].relationship.memberSince).toBe('last week');
+							expect(b2.members.data[0].relationship.memberSince).toBe('last week');
 						});
 					});
 

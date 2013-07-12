@@ -106,14 +106,24 @@
 			}).done(function(data) {
 				$.extend(res, data);
 				res.__setState();
-				//convert connected properties to resources
+				//convert connected properties to relationship items:
+				// {
+				//	  resource: {} //instance of GraphClientResource
+				//	  relationship: {} //data for this relationship
+				// }
 				for(var i in connPropResources) {
 					var propResObj = connPropResources[i];
 					if(res[propResObj.propertyName] && res[propResObj.propertyName].data && res[propResObj.propertyName].data.length > 0) {
 						for(var j in res[propResObj.propertyName].data) {
 							var propRes = res[propResObj.propertyName].data[j];
-							if(!(propRes instanceof GraphClientResource)) {
-								$.extend(propRes, propResObj.resource);
+							if(!(propRes.resource instanceof GraphClientResource)) {
+								var relData = {};
+								if(propRes.relationship) relData = propRes.relationship;
+								res[propResObj.propertyName].data[j] = {
+									resource: $.extend(propRes, propResObj.resource),
+									relationship: relData
+								}
+								res[propResObj.propertyName].data[j].resource.__setState();
 							}
 						}
 					}
@@ -199,20 +209,59 @@
 			var connProp = connectionProperties[entityName][i];
 			res[connProp.property] = {};
 			res[connProp.property].data = [];
-			res[connProp.property].$connect = function(connRes, success, error) {
+			res[connProp.property].$connect = function() {
+				var relationshipData, success, error;
+				var connRes = arguments[0];
+				if(typeof(arguments[1]) == 'function') {
+					success = arguments[1]; error = arguments[2];
+				} else {
+					relationshipData = arguments[1]; success = arguments[2]; error = arguments[3];
+				}
+				if(!relationshipData) relationshipData = {};
+
 				var d;
 				if(connRes.id > 0) {
 					d = { id: connRes.id };
 				}
 
-				//add connections to start and end entities
-				res[connProp.property].data.push(connRes);
-				connRes[connProp.connectedEntityProperty].data.push(res);
+				//check if connection already exists
+				var connectionExists = false;
+				for(var i in res[connProp.property].data) {
+					var r = res[connProp.property].data[i].resource;
+					if(r.id == connRes.id) {
+						//add relationship data to existing connection
+						$.extend(res[connProp.property].data[i].relationship, relationshipData);
+						connectionExists = true;
+						break;
+					}
+				}
+
+				if(connectionExists) { //add relationship data to inverse connection 
+					for(var i in connRes[connProp.connectedEntityProperty].data) {
+						var r = connRes[connProp.connectedEntityProperty].data[i].resource;
+						if(r.id == res.id) {
+							$.extend(connRes[connProp.connectedEntityProperty].data[i].relationship, relationshipData);
+							break;
+						}
+					}
+				}
+
+				if(!connectionExists) {
+					//add connections to start and end entities
+					res[connProp.property].data.push({
+						resource: connRes,
+						relationship: relationshipData
+					});
+					connRes[connProp.connectedEntityProperty].data.push({
+						resource: res,
+						relationship: relationshipData
+					});
+				}
 
 				$.ajax({
 				  type: "POST",
 				  url: GC.rootUrl + '/' + entities[entityName].endpoint + '/' + res.id + '/' + connProp.property,
-				  data: d
+				  data: $.extend(d, {relationship: relationshipData })
 				}).done(function(d) {
 					if(success) success(d);
 				}).error(function(err) {
