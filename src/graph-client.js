@@ -36,10 +36,10 @@
 			endpoint: endpointName
 		}
 
-		window.GraphClientResource = function GraphClientResource() {}
+		window.GraphClientResource = function GraphClientResource() { }
 
 		GraphClientResource.create = function(data, success, error) {
-			var res = graphClientResourceFactory(entityName);
+			var res = graphClientResourceFactory(entityName, endpointName);
 			$.extend(res, data);
 
 			$.ajax({
@@ -77,7 +77,7 @@
 				options = arguments[1]; success = arguments[2]; error = arguments[3];
 			}
 
-			var res = graphClientResourceFactory(entityName);
+			var res = graphClientResourceFactory(entityName, endpointName);
 
 			var url = GC.rootUrl + '/' + endpointName + '/' + id;
 
@@ -85,11 +85,13 @@
 			var connPropResources = [];
 			if(options && options.includeConnections) {
 				var includeQs = '';
-				for(var propEntityName in connectionProperties[entityName]) {
-					var connProp = connectionProperties[entityName][propEntityName].property;
+				for(var i in connectionProperties[entityName]) {
+					var connProp = connectionProperties[entityName][i].property;
+					var connEntity = connectionProperties[entityName][i].connectedEntity;
+					var connEndpointName = entities[connEntity].endpoint;
 					connPropResources.push({
 						propertyName: connProp,
-						resource: graphClientResourceFactory(propEntityName)
+						resource: graphClientResourceFactory(connEntity, connEndpointName)
 					});
 					includeQs += connProp + ',';
 				}
@@ -152,7 +154,7 @@
 			if(numDiffs > 0) {
 				$.ajax({
 				  type: "POST",
-				  url: GC.rootUrl + '/' + endpointName + '/' + this.id,
+				  url: GC.rootUrl + '/' + this.endpoint + '/' + this.id,
 				  data: data
 				}).done(function(d) {
 					$this.__setState();
@@ -169,7 +171,7 @@
 			$this.$save(function() {
 				$.ajax({
 				  type: "GET",
-				  url: GC.rootUrl + '/' + endpointName + '/' + $this.id
+				  url: GC.rootUrl + '/' + $this.endpoint + '/' + $this.id
 				}).done(function(d) {
 					$.extend($this, d);
 					if(success) success(d);
@@ -182,7 +184,7 @@
 			var $this = this;
 			$.ajax({
 			  type: "DELETE",
-			  url: GC.rootUrl + '/' + endpointName + '/' + this.id
+			  url: GC.rootUrl + '/' + this.endpoint + '/' + this.id
 			}).done(function(d) {
 				//remove all properties from the resource object
 				for(var i in $this) {
@@ -203,8 +205,10 @@
 		$.extend(window[cls], GraphClientResource);
 	}
 
-	function graphClientResourceFactory(entityName) {
+	function graphClientResourceFactory(entityName, endpointName) {
 		var res = new GraphClientResource();
+		res.resourceType = entityName;
+		res.endpoint = endpointName;
 		for(var i in connectionProperties[entityName]) {
 			var connProp = connectionProperties[entityName][i];
 			res[connProp.property] = {};
