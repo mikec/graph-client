@@ -8,6 +8,9 @@
 	GC.setup = function(params) {
 		if(params) {
 			this.rootUrl = (params.rootUrl.substr(params.rootUrl.length - 1, 1) == '/' ? params.rootUrl.substr(0, params.rootUrl.length - 1) : params.rootUrl);
+			if(!this.pageSize || params.pageSize > 0) {
+				this.pageSize = (params.pageSize > 0 ? params.pageSize : 10);	
+			}
 		}
 	}
 
@@ -82,51 +85,59 @@
 			var url = GC.rootUrl + '/' + endpointName + '/' + id;
 
 			//add included connections to the url, if option is set
-			var connPropResources = [];
+			var connProps = [];
 			if(options && options.includeConnections) {
 				var includeQs = '';
 				for(var i in connectionProperties[entityName]) {
 					var connProp = connectionProperties[entityName][i].property;
 					var connEntity = connectionProperties[entityName][i].connectedEntity;
 					var connEndpointName = entities[connEntity].endpoint;
-					connPropResources.push({
-						propertyName: connProp,
-						resource: graphClientResourceFactory(connEntity, connEndpointName)
+					connProps.push({
+						property: connProp,
+						entity: connEntity,
+						endpoint: connEndpointName
 					});
 					includeQs += connProp + ',';
 				}
 				if(includeQs.length > 0) {
-					includeQs = '?include=' + includeQs;
-					includeQs = includeQs.substr(0, includeQs.length - 1);
-					url += includeQs;
+					includeQs = includeQs.substr(0, includeQs.length-1);
+					url = addQuerystringParam(url, 'include', includeQs);
 				}
 			}
+			url = addQuerystringParam(url, 'limit', GC.pageSize);
 
 			$.ajax({
 			  type: "GET",
 			  url: url
 			}).done(function(data) {
-				$.extend(res, data);
+				//extend the existing resource with data from the service call response
+				//simple properties first
+				for(var prop in data) {
+					if(isSimpleProp(data[prop]) && data[prop].indexOf('__') != 0) {
+						res[prop] = data[prop];
+					}
+				}
+				//then connection properties
+				for(var i in connProps) {
+					var connProp = connProps[i];
+					if(res[connProp.property] && 
+						res[connProp.property].data && 
+						data[connProp.property] && 
+						data[connProp.property].data) {
+						for(var j in data[connProp.property].data) {
+							res[connProp.property].data.push(data[connProp.property].data[j]);
+						}
+					}
+				}
+
 				res.__setState();
-				//convert connected properties to relationship items:
-				// {
-				//	  resource: {} //instance of GraphClientResource
-				//	  relationship: {} //data for this relationship
-				// }
-				for(var i in connPropResources) {
-					var propResObj = connPropResources[i];
-					if(res[propResObj.propertyName] && res[propResObj.propertyName].data && res[propResObj.propertyName].data.length > 0) {
-						for(var j in res[propResObj.propertyName].data) {
-							var propRes = res[propResObj.propertyName].data[j];
-							if(!(propRes.resource instanceof GraphClientResource)) {
-								var relData = {};
-								if(propRes.relationship) relData = propRes.relationship;
-								res[propResObj.propertyName].data[j] = {
-									resource: $.extend(propRes, propResObj.resource),
-									relationship: relData
-								}
-								res[propResObj.propertyName].data[j].resource.__setState();
-							}
+
+				//convert all connected properties to relationship items:
+				for(var i in connProps) {
+					var connProp = connProps[i];
+					if(res[connProp.property] && res[connProp.property].data && res[connProp.property].data.length > 0) {
+						for(var j in res[connProp.property].data) {
+							res[connProp.property].data[j] = new GraphClientRelatedItem(res[connProp.property].data[j], connProp.entity, connProp.endpoint);
 						}
 					}
 				}
@@ -154,7 +165,7 @@
 			if(numDiffs > 0) {
 				$.ajax({
 				  type: "POST",
-				  url: GC.rootUrl + '/' + this.endpoint + '/' + this.id,
+				  url: GC.rootUrl + '/' + this.__endpoint + '/' + this.id,
 				  data: data
 				}).done(function(d) {
 					$this.__setState();
@@ -168,10 +179,11 @@
 		}
 		GraphClientResource.prototype.$sync = function(success, error) {
 			var $this = this;
-			$this.$save(function() {
+			var url = GC.rootUrl + '/' + this.__endpoint + '/' + this.id;
+			this.$save(function() {
 				$.ajax({
 				  type: "GET",
-				  url: GC.rootUrl + '/' + $this.endpoint + '/' + $this.id
+				  url: url
 				}).done(function(d) {
 					$.extend($this, d);
 					if(success) success(d);
@@ -184,7 +196,7 @@
 			var $this = this;
 			$.ajax({
 			  type: "DELETE",
-			  url: GC.rootUrl + '/' + this.endpoint + '/' + this.id
+			  url: GC.rootUrl + '/' + this.__endpoint + '/' + this.id
 			}).done(function(d) {
 				//remove all properties from the resource object
 				for(var i in $this) {
@@ -205,73 +217,108 @@
 		$.extend(window[cls], GraphClientResource);
 	}
 
+
+
 	function graphClientResourceFactory(entityName, endpointName) {
-		var res = new GraphClientResource();
-		res.resourceType = entityName;
-		res.endpoint = endpointName;
-		for(var i in connectionProperties[entityName]) {
-			var connProp = connectionProperties[entityName][i];
-			res[connProp.property] = {};
-			res[connProp.property].data = [];
-			res[connProp.property].$connect = function() {
-				var relationshipData, success, error;
-				var connRes = arguments[0];
-				if(typeof(arguments[1]) == 'function') {
-					success = arguments[1]; error = arguments[2];
-				} else {
-					relationshipData = arguments[1]; success = arguments[2]; error = arguments[3];
-				}
-				if(!relationshipData) relationshipData = {};
 
-				var d;
-				if(connRes.id > 0) {
-					d = { id: connRes.id };
-				}
+		function GraphClientConnectionProperty(connectionProperty) { 
+			this.connection = connectionProperty;
+			this.data = [];
+		}
 
-				//check if connection already exists
-				var connectionExists = false;
-				for(var i in res[connProp.property].data) {
-					var r = res[connProp.property].data[i].resource;
-					if(r.id == connRes.id) {
-						//add relationship data to existing connection
-						$.extend(res[connProp.property].data[i].relationship, relationshipData);
-						connectionExists = true;
+		GraphClientConnectionProperty.prototype.$connect = function() {
+			var relationshipData, success, error;
+			var connRes = arguments[0];
+			if(typeof(arguments[1]) == 'function') {
+				success = arguments[1]; error = arguments[2];
+			} else {
+				relationshipData = arguments[1]; success = arguments[2]; error = arguments[3];
+			}
+			if(!relationshipData) relationshipData = {};
+
+			var d;
+			if(connRes.id > 0) {
+				d = { id: connRes.id };
+			}
+
+			//check if connection already exists
+			var connectionExists = false;
+			for(var i in res[this.connection.property].data) {
+				var r = res[this.connection.property].data[i].resource;
+				if(r.id == connRes.id) {
+					//add relationship data to existing connection
+					$.extend(res[this.connection.property].data[i].relationship, relationshipData);
+					connectionExists = true;
+					break;
+				}
+			}
+
+			if(connectionExists) { //add relationship data to inverse connection 
+				for(var i in connRes[this.connection.connectedEntityProperty].data) {
+					var r = connRes[this.connection.connectedEntityProperty].data[i].resource;
+					if(r.id == res.id) {
+						$.extend(connRes[this.connection.connectedEntityProperty].data[i].relationship, relationshipData);
 						break;
 					}
 				}
-
-				if(connectionExists) { //add relationship data to inverse connection 
-					for(var i in connRes[connProp.connectedEntityProperty].data) {
-						var r = connRes[connProp.connectedEntityProperty].data[i].resource;
-						if(r.id == res.id) {
-							$.extend(connRes[connProp.connectedEntityProperty].data[i].relationship, relationshipData);
-							break;
-						}
-					}
-				}
-
-				if(!connectionExists) {
-					//add connections to start and end entities
-					res[connProp.property].data.push({
-						resource: connRes,
-						relationship: relationshipData
-					});
-					connRes[connProp.connectedEntityProperty].data.push({
-						resource: res,
-						relationship: relationshipData
-					});
-				}
-
-				$.ajax({
-				  type: "POST",
-				  url: GC.rootUrl + '/' + entities[entityName].endpoint + '/' + res.id + '/' + connProp.property,
-				  data: $.extend(d, {relationship: relationshipData })
-				}).done(function(d) {
-					if(success) success(d);
-				}).error(function(err) {
-					if(error) error(err);
-				});
 			}
+
+			if(!connectionExists) {
+				//add connections to start and end entities
+				var connRelItm = new GraphClientRelatedItem(connRes, relationshipData);
+				res[this.connection.property].data.push(connRelItm);
+
+				var relItm = new GraphClientRelatedItem(res, relationshipData);
+				connRes[this.connection.connectedEntityProperty].data.push(relItm);
+			}
+
+			$.ajax({
+			  type: "POST",
+			  url: GC.rootUrl + '/' + entities[entityName].endpoint + '/' + res.id + '/' + this.connection.property,
+			  data: $.extend(d, {relationship: relationshipData })
+			}).done(function(d) {
+				if(success) success(d);
+			}).error(function(err) {
+				if(error) error(err);
+			});
+		}
+
+		GraphClientConnectionProperty.prototype.$getPage = function() {
+			var pageNumber, success, error;
+			if(typeof(arguments[0]) == 'function') {
+				success = arguments[0]; error = arguments[1];
+			} else {
+				pageNumber = arguments[0]; success = arguments[1]; error = arguments[2];
+			}
+
+			var $this = this;
+			var url = GC.rootUrl + '/' + entities[entityName].endpoint + '/' + res.id + '/' + this.connection.property;
+			url = addQuerystringParam(url, 'limit', GC.pageSize);
+			var numResults = res[$this.connection.property].data.length;
+			if(numResults > 0) {
+				url = addQuerystringParam(url, 'skip', numResults);
+			}
+			$.ajax({
+			  type: "GET",
+			  url: url,
+			}).done(function(d) {
+				for(var i in d.data) {
+					var relItm = new GraphClientRelatedItem(d.data[i], $this.connection.connectedEntity, entities[$this.connection.connectedEntity].endpoint)
+					res[$this.connection.property].data.push(relItm);
+				}
+				if(success) success(d);
+			}).error(function(err) {
+				if(error) error(err);
+			});
+		}
+
+		var res = new GraphClientResource();
+		res.__resourceType = entityName;
+		res.__endpoint = endpointName;
+		for(var i in connectionProperties[entityName]) {
+			var connProp = connectionProperties[entityName][i];
+
+			res[connProp.property] = new GraphClientConnectionProperty(connProp);
 		}
 		return res;
 	}
@@ -313,6 +360,28 @@
 		}
 	}
 
+	window.GraphClientRelatedItem = function GraphClientRelatedItem() {
+		var data, relData, resource, entityName, endpointName;
+		if(arguments[0] instanceof GraphClientResource) {
+			resource = arguments[0];
+			relData = arguments[1];
+		} else {
+			data = arguments[0];
+			entityName = arguments[1];
+			endpointName = arguments[2];
+		}
+
+		if(resource) {
+			this.resource = resource;
+			this.relationship = relData;
+		} else {
+			this.resource = graphClientResourceFactory(entityName, endpointName);
+			this.relationship = (data.relationship ? data.relationship : {});
+			$.extend(this.resource, data);
+			this.resource.__setState();
+		}
+	}
+
 	function capitalize(string)
 	{
 	    return string.charAt(0).toUpperCase() + string.slice(1);
@@ -327,6 +396,14 @@
 
 	function isSimpleProp(prop) {
 		return (typeof(prop) != 'object' && typeof(prop) != 'function');
+	}
+
+	function addQuerystringParam(url, paramKey, paramVal) {
+		if(url && paramKey && paramVal) {
+			var url = (url.indexOf('?') > 0 ? url+'&' : url+'?');
+			url = url + paramKey + '=' + paramVal;
+		}
+		return url;
 	}
 
 })(window);

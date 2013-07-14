@@ -23,6 +23,7 @@ app.endpoint("thing")
    .endpoint("genre", {"key": "name"})
    .endpoint("person", {"collectionName": "people"})
    .endpoint("user.bands", "band.members", "is_member_of")	
+   .endpoint("user.following", "band.followers", "is_following")	
    .endpoint("user.friends", "is_friends_with")
    .endpoint("thing.parts", "has_part")
    
