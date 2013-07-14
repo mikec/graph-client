@@ -2,33 +2,46 @@ var _asyncTimeout = 1000;
 var _testAccessToken = 'asdflkjas234987234kjasdf';
 var _testGuid = 123098234098123098234;
 
+var _testsStarted = false;
+
 var users = [];
 var bands = [];
 
 (function beforeAll() {
-	GC.setup({
-		rootUrl: 'http://localhost:3000',
-		pageSize: 5
-	});
-	GC.define('user');	
-	GC.define('band');
-	GC.define('user.bands', 'band.members');
-	GC.define('user.following', 'band.followers');
-
-	GC.setup({
-		defaultParams: {
-			access_token: _testAccessToken,
-			guid: _testGuid
-		}
-	});
 
 	startTests();
 
 })();
 
 function startTests() {
+	started = true;
 
 	describe('Setup', function() {
+
+		it('should configure based on server config and execute the ready function', function() {
+			var done = false;
+			runs(function() {
+				GC.setup({
+					rootUrl: 'http://localhost:3000',
+					pageSize: 5,
+					useServerConfig: true,
+					ready: function() {
+						done = true;
+					},		
+					defaultParams: {
+						access_token: _testAccessToken,
+						guid: _testGuid
+					}
+				});
+				/*GC.define('user');	
+				GC.define('band');
+				GC.define('user.bands', 'band.members');
+				GC.define('user.following', 'band.followers');*/
+			});
+			waitsFor(function() {
+				return done;
+			}, 'setup to be ready', _asyncTimeout);
+		});
 
 		it('should create a User class', function() {
 			expect(User).toBeDefined();
@@ -40,12 +53,12 @@ function startTests() {
 			expect(Band.create).toBeDefined();
 		});
 
-		it('should define two entities', function() {
+		it('should define six entities', function() {
 			expect(GC.entities['user']).toBeDefined();
 			expect(GC.entities['band']).toBeDefined();
 			var i = 0;
 			for(var e in GC.entities) i++;
-			expect(i).toBe(2);
+			expect(i).toBe(6);
 		});
 
 		it('should have a Band and a User class defined', function() {
@@ -58,13 +71,10 @@ function startTests() {
 		it('should define an entity named user and an entity named band', function() {
 			expect(GC.entities['user']).toBeDefined();
 			expect(GC.entities['band']).toBeDefined();
-			var i = 0;
-			for(var e in GC.entities) i++;
-			expect(i).toBe(2);
 		});
 
 		it('should define start and end connection properties', function() {
-			expect(GC.connectionProperties['user'].length).toBe(2);
+			expect(GC.connectionProperties['user'].length).toBe(3);
 			expect(GC.connectionProperties['band'].length).toBe(2);
 		});
 

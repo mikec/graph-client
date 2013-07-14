@@ -16,6 +16,24 @@
 			if(!this.defaultParams || params.defaultParams) {
 				this.defaultParams = (params.defaultParams ? params.defaultParams : {});
 			}
+			if(params.useServerConfig) {
+				$.ajax({
+					type: 'GET',
+					url: GC.rootUrl + '/config'
+				}).done(function(d) {
+					for(var i in d.entities) {
+						GC.define(d.entities[i].name, d.entities[i].indexName);
+					}
+					for(var i in d.connections) {
+						GC.define(d.connections[i].outboundPath, d.connections[i].inboundPath)
+					}
+					if(params.ready) params.ready();
+				}).error(function(err) {
+					//
+				});
+			} else {
+				if(params.ready) params.ready();
+			}
 		}
 	}
 
