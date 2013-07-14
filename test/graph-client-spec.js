@@ -1,4 +1,6 @@
 var _asyncTimeout = 1000;
+var _testAccessToken = 'asdflkjas234987234kjasdf';
+var _testGuid = 123098234098123098234;
 
 var users = [];
 var bands = [];
@@ -12,6 +14,13 @@ var bands = [];
 	GC.define('band');
 	GC.define('user.bands', 'band.members');
 	GC.define('user.following', 'band.followers');
+
+	GC.setup({
+		defaultParams: {
+			access_token: _testAccessToken,
+			guid: _testGuid
+		}
+	});
 
 	startTests();
 
@@ -61,6 +70,11 @@ function startTests() {
 
 		it('should set page size to 5', function() {
 			expect(GC.pageSize).toBe(5);
+		});
+
+		it('should have default params defined', function() {
+			expect(GC.defaultParams.access_token).toBe(_testAccessToken);
+			expect(GC.defaultParams.guid).toBe(_testGuid);
 		});
 
 		describe('Setup with a root URL that doesn\'t have a trailing slash', function() {

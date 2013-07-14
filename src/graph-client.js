@@ -7,9 +7,14 @@
 
 	GC.setup = function(params) {
 		if(params) {
-			this.rootUrl = (params.rootUrl.substr(params.rootUrl.length - 1, 1) == '/' ? params.rootUrl.substr(0, params.rootUrl.length - 1) : params.rootUrl);
+			if(!this.rootUrl || params.rootUrl) {
+				this.rootUrl = (params.rootUrl.substr(params.rootUrl.length - 1, 1) == '/' ? params.rootUrl.substr(0, params.rootUrl.length - 1) : params.rootUrl);
+			}
 			if(!this.pageSize || params.pageSize > 0) {
 				this.pageSize = (params.pageSize > 0 ? params.pageSize : 10);	
+			}
+			if(!this.defaultParams || params.defaultParams) {
+				this.defaultParams = (params.defaultParams ? params.defaultParams : {});
 			}
 		}
 	}
@@ -47,7 +52,7 @@
 
 			$.ajax({
 			  type: "POST",
-			  url: GC.rootUrl + '/' + endpointName,
+			  url: constructUrl(endpointName),
 			  data: data
 			}).done(function(data) {
 				res.id = data.key;
@@ -82,12 +87,10 @@
 
 			var res = graphClientResourceFactory(entityName, endpointName);
 
-			var url = GC.rootUrl + '/' + endpointName + '/' + id;
-
 			//add included connections to the url, if option is set
+			var urlParams = {};
 			var connProps = [];
 			if(options && options.includeConnections) {
-				var includeQs = '';
 				for(var i in connectionProperties[entityName]) {
 					var connProp = connectionProperties[entityName][i].property;
 					var connEntity = connectionProperties[entityName][i].connectedEntity;
@@ -97,18 +100,18 @@
 						entity: connEntity,
 						endpoint: connEndpointName
 					});
-					includeQs += connProp + ',';
+					if(!urlParams.include) urlParams.include = '';
+					urlParams.include += connProp + ',';
 				}
-				if(includeQs.length > 0) {
-					includeQs = includeQs.substr(0, includeQs.length-1);
-					url = addQuerystringParam(url, 'include', includeQs);
+				if(urlParams.include && urlParams.include.length > 0) {
+					urlParams.include = urlParams.include.substr(0, urlParams.include.length-1);
 				}
 			}
-			url = addQuerystringParam(url, 'limit', GC.pageSize);
+			urlParams.limit = GC.pageSize;
 
 			$.ajax({
 			  type: "GET",
-			  url: url
+			  url: constructUrl(endpointName + '/' + id, urlParams)
 			}).done(function(data) {
 				//extend the existing resource with data from the service call response
 				//simple properties first
@@ -165,7 +168,7 @@
 			if(numDiffs > 0) {
 				$.ajax({
 				  type: "POST",
-				  url: GC.rootUrl + '/' + this.__endpoint + '/' + this.id,
+				  url: constructUrl(this.__endpoint + '/' + this.id),
 				  data: data
 				}).done(function(d) {
 					$this.__setState();
@@ -179,7 +182,7 @@
 		}
 		GraphClientResource.prototype.$sync = function(success, error) {
 			var $this = this;
-			var url = GC.rootUrl + '/' + this.__endpoint + '/' + this.id;
+			var url = constructUrl(this.__endpoint + '/' + this.id);
 			this.$save(function() {
 				$.ajax({
 				  type: "GET",
@@ -196,7 +199,7 @@
 			var $this = this;
 			$.ajax({
 			  type: "DELETE",
-			  url: GC.rootUrl + '/' + this.__endpoint + '/' + this.id
+			  url: constructUrl(this.__endpoint + '/' + this.id)
 			}).done(function(d) {
 				//remove all properties from the resource object
 				for(var i in $this) {
@@ -274,7 +277,7 @@
 
 			$.ajax({
 			  type: "POST",
-			  url: GC.rootUrl + '/' + entities[entityName].endpoint + '/' + res.id + '/' + this.connection.property,
+			  url: constructUrl(entities[entityName].endpoint + '/' + res.id + '/' + this.connection.property),
 			  data: $.extend(d, {relationship: relationshipData })
 			}).done(function(d) {
 				if(success) success(d);
@@ -292,15 +295,16 @@
 			}
 
 			var $this = this;
-			var url = GC.rootUrl + '/' + entities[entityName].endpoint + '/' + res.id + '/' + this.connection.property;
-			url = addQuerystringParam(url, 'limit', GC.pageSize);
+			var url = entities[entityName].endpoint + '/' + res.id + '/' + this.connection.property;
+			var urlParams = {};
+			urlParams.limit = GC.pageSize;
 			var numResults = res[$this.connection.property].data.length;
 			if(numResults > 0) {
-				url = addQuerystringParam(url, 'skip', numResults);
+				urlParams.skip = numResults;
 			}
 			$.ajax({
 			  type: "GET",
-			  url: url,
+			  url: constructUrl(url, urlParams)
 			}).done(function(d) {
 				for(var i in d.data) {
 					var relItm = new GraphClientRelatedItem(d.data[i], $this.connection.connectedEntity, entities[$this.connection.connectedEntity].endpoint)
@@ -380,6 +384,16 @@
 			$.extend(this.resource, data);
 			this.resource.__setState();
 		}
+	}
+
+	function constructUrl(url, params) {
+		url = GC.rootUrl + '/' + url;
+		if(!params) params = {};
+		$.extend(params, GC.defaultParams);
+		for(var p in params) {
+			url = addQuerystringParam(url, p, params[p]);
+		}
+		return url;
 	}
 
 	function capitalize(string)
