@@ -328,6 +328,52 @@ function startTests() {
 
 	});
 
+	describe('Creating a user with a specified key', function() {
+
+		var uid = '123456789';
+
+		beforeEach(function() {
+			var done = false;
+			var user;
+			runs(function() {
+				var tmpUsr = User.get(uid, function() {
+					if(tmpUsr.id > 0) {
+						tmpUsr.$delete(function() {
+							done = true;
+						});
+					} else {
+						done = true;
+					}
+				}, function() {
+					done = true;
+				});
+			});
+			waitsFor(function() {
+				return done;
+			}, 'cleanup of user ' + uid + ' to be done', _asyncTimeout);
+			runs(function() {
+				done = false;
+				user = User.create(uid, {name:'jenn jacobson'}, function() {
+					done = true;
+				});
+			});
+			waitsFor(function() { return done; }, 'user creation to be done', _asyncTimeout);
+		});
+
+		it('should create user ' + uid, function() {
+			var done = false;
+			var u;
+			runs(function() {
+				u = User.get(uid, function() { done = true; });
+			});
+			waitsFor(function() { return done; }, 'user get to be done', _asyncTimeout);
+			runs(function() {
+				expect(u.id).toBe(uid);
+			});
+		});
+
+	});
+
 	describe('Creating a band and a user', function() {
 
 		var user, band;

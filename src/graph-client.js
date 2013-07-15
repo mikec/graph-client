@@ -64,7 +64,23 @@
 
 		window.GraphClientResource = function GraphClientResource() { }
 
-		GraphClientResource.create = function(data, success, error) {
+		GraphClientResource.create = function() {
+			var data, id, success, error;
+			if(parseInt(arguments[0]) > 0) {
+				id = parseInt(arguments[0]);
+				data = arguments[1];
+				success = arguments[2];
+				error = arguments[3];
+			} else {
+				data = arguments[0];
+				success = arguments[1];
+				error = arguments[2];
+			}
+
+			if(id > 0) {
+				data.id = id;
+			}
+
 			var res = graphClientResourceFactory(entityName, endpointName);
 			$.extend(res, data);
 
