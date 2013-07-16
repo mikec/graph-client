@@ -150,7 +150,7 @@
 				//extend the existing resource with data from the service call response
 				//simple properties first
 				for(var prop in data) {
-					if(isSimpleProp(data[prop]) && data[prop].indexOf('__') != 0) {
+					if(isSimpleProp(data[prop]) && data[prop].toString().indexOf('__') != 0) {
 						res[prop] = data[prop];
 					}
 				}
@@ -350,6 +350,18 @@
 			});
 		}
 
+		GraphClientConnectionProperty.prototype.$find = function(id) {
+			var relItm;
+			for(var i in res[this.connection.property].data) {
+				var itm = res[this.connection.property].data[i];
+				if(itm.resource.id == id) {
+					relItm = itm;
+					break;
+				}
+			}
+			return relItm;
+		}
+
 		var res = new GraphClientResource();
 		res.__resourceType = entityName;
 		res.__endpoint = endpointName;
@@ -455,4 +467,3 @@
 	}
 
 })(window);
-

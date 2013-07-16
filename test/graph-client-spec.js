@@ -669,6 +669,18 @@ function startTests() {
 			});
 		});
 
+		it('should be able to get a follower from the collection property by its id', function() {
+			var b;
+			runs(function() {
+				b = Band.getAll(band.id);
+			});
+			waitsFor(function() { return b.id > 0; }, 'service call to be done', _asyncTimeout);
+			runs(function() {
+				var f = b.followers.$find(users[3].id);
+				expect(f.resource.id).toBe(users[3].id);
+			});
+		});
+
 		it('should only return 5 followers when getting the band', function() {
 			var b;
 			runs(function() {
