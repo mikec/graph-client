@@ -642,6 +642,101 @@ function startTests() {
 
 			});
 
+			describe('Connecting the user to a newly created band', function() {
+
+				var done;
+
+				beforeEach(function() {
+					done = false;
+					runs(function() {
+						u.bands.$connect({name:'coconut', genre:'fruit'}, function() {
+							done = true;
+						});
+					});
+				});
+
+				it('should create a new band resource before the server response', function() {
+					expect(u.bands.data.length).toBe(1);
+					expect(u.bands.data[0].resource.name).toBe('coconut');
+				});
+
+				it('should update the resource with an id after server response', function() {
+					waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+					runs(function() {
+						expect(u.bands.data.length).toBe(1);
+						expect(u.bands.data[0].resource.name).toBe('coconut');
+						expect(u.bands.data[0].resource.id).toBeGreaterThan(0);
+					});
+				});
+
+				it('should be able to get the newly created band from the server', function() {
+					var b2;
+					waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+					runs(function() {
+						done = false;
+						b2 = Band.getAll(u.bands.data[0].resource.id, function() {
+							done = true;
+						});
+					});
+					waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+					runs(function() {
+						expect(b2.id).toBe(u.bands.data[0].resource.id);
+						expect(b2.members.data.length).toBe(1);
+						expect(b2.members.data[0].resource.id).toBe(u.id);
+					});
+				});
+
+			});
+
+			describe('Connecting the user to a newly created band with relationship data', function() {
+
+				var done;
+
+				beforeEach(function() {
+					done = false;
+					runs(function() {
+						u.bands.$connect({name:'coconut', genre:'fruit'}, {instrument:'banjo', memberSince:'yesterday'}, function() {
+							done = true;
+						});
+					});
+				});
+
+				it('should create a new related item with resource and relationship data before the server response', function() {
+					expect(u.bands.data.length).toBe(1);
+					expect(u.bands.data[0].resource.name).toBe('coconut');
+					expect(u.bands.data[0].relationship.instrument).toBe('banjo');
+				});
+
+				it('should update the resource with an id after server response, and not affect relationship data', function() {
+					waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+					runs(function() {
+						expect(u.bands.data.length).toBe(1);
+						expect(u.bands.data[0].resource.name).toBe('coconut');
+						expect(u.bands.data[0].resource.id).toBeGreaterThan(0);
+						expect(u.bands.data[0].relationship.instrument).toBe('banjo');
+					});
+				});
+
+				it('should be able to get the newly created band from the server, with relationship data included', function() {
+					var b2;
+					waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+					runs(function() {
+						done = false;
+						b2 = Band.getAll(u.bands.data[0].resource.id, function() {
+							done = true;
+						});
+					});
+					waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+					runs(function() {
+						expect(b2.id).toBe(u.bands.data[0].resource.id);
+						expect(b2.members.data.length).toBe(1);
+						expect(b2.members.data[0].resource.id).toBe(u.id);
+						expect(b2.members.data[0].relationship.instrument).toBe('banjo');
+					});
+				});
+
+			});
+
 		});
 
 	});

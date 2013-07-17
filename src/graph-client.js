@@ -62,7 +62,11 @@
 			endpoint: endpointName
 		}
 
-		window.GraphClientResource = function GraphClientResource() { }
+		window.GraphClientResource = function GraphClientResource(data) { 
+			if(data) {
+				$.extend(this, data);
+			}
+		}
 
 		GraphClientResource.create = function() {
 			var data, id, success, error;
@@ -256,7 +260,18 @@
 
 
 
-	function graphClientResourceFactory(entityName, endpointName) {
+	function graphClientResourceFactory() {
+
+		var data, entityName, endpointName;
+		if(typeof(arguments[0]) == 'object') {
+			data = arguments[0];
+			entityName = arguments[1];
+			endpointName = arguments[2];
+		} else {
+			data = null;
+			entityName = arguments[0];
+			endpointName = arguments[1];
+		}
 
 		function GraphClientConnectionProperty(connectionProperty) { 
 			this.connection = connectionProperty;
@@ -264,12 +279,17 @@
 		}
 
 		GraphClientConnectionProperty.prototype.$connect = function() {
-			var relationshipData, success, error;
-			var connRes = arguments[0];
+			var connRes, relationshipData, success, error;
+			if(arguments[0] instanceof GraphClientResource) {
+				connRes = arguments[0];
+			} else {
+				connRes = graphClientResourceFactory(arguments[0], this.connection.connectedEntity, this.connection.connectedEntityProperty)
+			}
 			if(typeof(arguments[1]) == 'function') {
 				success = arguments[1]; error = arguments[2];
 			} else {
-				relationshipData = arguments[1]; success = arguments[2]; error = arguments[3];
+				relationshipData = arguments[1]; 
+				success = arguments[2]; error = arguments[3];
 			}
 			if(!relationshipData) relationshipData = {};
 
@@ -314,6 +334,9 @@
 			  url: constructUrl(entities[entityName].endpoint + '/' + res.id + '/' + this.connection.property),
 			  data: $.extend(d, {relationship: relationshipData })
 			}).done(function(d) {
+				if(d.connectedEntityKey && !connRes.id) {
+					connRes.id = d.connectedEntityKey;
+				}
 				if(success) success(d);
 			}).error(function(err) {
 				if(error) error(err);
@@ -362,12 +385,11 @@
 			return relItm;
 		}
 
-		var res = new GraphClientResource();
+		var res = new GraphClientResource(data);
 		res.__resourceType = entityName;
 		res.__endpoint = endpointName;
 		for(var i in connectionProperties[entityName]) {
 			var connProp = connectionProperties[entityName][i];
-
 			res[connProp.property] = new GraphClientConnectionProperty(connProp);
 		}
 		return res;
