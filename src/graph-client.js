@@ -195,7 +195,9 @@
 			//diff properties to find what has changed
 			var numDiffs = 0;
 			for(var i in this) {
-				if(i != '__state' && this[i] != this.__state.properties[i]) {
+				if(i != '__state' 
+					&& this[i] != this.__state.properties[i]
+					&& isSimpleProp(this[i])) {
 					numDiffs++;
 					data[i] = this[i];
 				}
