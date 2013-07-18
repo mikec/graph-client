@@ -7,15 +7,13 @@
 
 	GC.setup = function(params) {
 		if(params) {
-			if(!this.rootUrl || params.rootUrl) {
-				this.rootUrl = (params.rootUrl.substr(params.rootUrl.length - 1, 1) == '/' ? params.rootUrl.substr(0, params.rootUrl.length - 1) : params.rootUrl);
-			}
-			if(!this.pageSize || params.pageSize > 0) {
-				this.pageSize = (params.pageSize > 0 ? params.pageSize : 10);	
-			}
-			if(!this.defaultParams || params.defaultParams) {
-				this.defaultParams = (params.defaultParams ? params.defaultParams : {});
-			}
+			$.extend(this, params);
+
+			//defaults
+			if(!this.pageSize) this.pageSize = 10;
+			if(this.rootUrl) this.rootUrl = this.rootUrl.substr(this.rootUrl.length - 1, 1) == '/' ? this.rootUrl.substr(0, params.rootUrl.length - 1) : this.rootUrl;
+			if(!this.defaultParams) this.defaultParams = {};
+
 			if(params.useServerConfig) {
 				$.ajax({
 					type: 'GET',
