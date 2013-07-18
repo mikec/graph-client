@@ -779,7 +779,9 @@ function startTests() {
 			runs(function() {
 				b = Band.getAll(band.id);
 			});
-			waitsFor(function() { return b.id > 0; }, 'service call to be done', _asyncTimeout);
+			waitsFor(function() { 
+				return (b.id > 0 && (b.followers && b.followers.data.length > 0));
+			}, 'service call to be done', _asyncTimeout);
 			runs(function() {
 				var f = b.followers.$find(users[3].id);
 				expect(f.resource.id).toBe(users[3].id);
