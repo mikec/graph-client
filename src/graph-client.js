@@ -343,6 +343,27 @@
 			});
 		}
 
+		GraphClientConnectionProperty.prototype.$disconnect = function() {
+			var connRes, success, error;
+			connRes = arguments[0];
+			success = arguments[1];
+			error = arguments[2];
+
+			//disconnect the objects
+			res[this.connection.property].$remove(connRes.id);
+			connRes[this.connection.connectedEntityProperty].$remove(res.id);
+
+			//send DELETE request to server to save the disconnection
+			$.ajax({
+			  type: "DELETE",
+			  url: constructUrl(entities[entityName].endpoint + '/' + res.id + '/' + this.connection.property + '/' + connRes.id),
+			}).done(function(d) {
+				if(success) success(d);
+			}).error(function(err) {
+				if(error) error(err);
+			});
+		}
+
 		GraphClientConnectionProperty.prototype.$getPage = function() {
 			var pageNumber, success, error;
 			if(typeof(arguments[0]) == 'function') {
@@ -383,6 +404,20 @@
 				}
 			}
 			return relItm;
+		}
+
+		GraphClientConnectionProperty.prototype.$remove = function(id) {
+			var relItmIdx;
+			for(var i in res[this.connection.property].data) {
+				var itm = res[this.connection.property].data[i];
+				if(itm.resource.id == id) {
+					relItmIdx = i;
+					break;
+				}
+			}
+			if(relItmIdx >= 0) {
+				res[this.connection.property].data.splice(relItmIdx, 1);
+			}
 		}
 
 		var res = new GraphClientResource(data);

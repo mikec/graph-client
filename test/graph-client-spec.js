@@ -568,6 +568,38 @@ function startTests() {
 
 				});
 
+				describe('Disconnecting the user and the band', function() {
+
+					it('should disconnect the user and the band before server response', function() {
+						u.bands.$disconnect(b);
+						expect(u.bands.data.length).toBe(0);
+						expect(b.members.data.length).toBe(0);
+					});
+
+					it('should disconnect the user and the band after server response', function() {	
+						var _u, _b;				
+						var done = false;
+						runs(function() {
+							u.bands.$disconnect(b, function() { done = true; });
+						});
+						waitsFor(function() { return done; }, 'service call', _asyncTimeout);
+						runs(function() {
+							done = false;
+							_u = User.getAll(u.id, function() {
+								_b = Band.getAll(b.id, function() {
+									done = true;
+								});
+							});
+						});
+						waitsFor(function() { return done; }, 'service call', _asyncTimeout);
+						runs(function() {
+							expect(_u.bands.data.length).toBe(0);
+							expect(_b.members.data.length).toBe(0);
+						});
+					});
+
+				});
+
 			});
 
 			describe('Connecting the user and the band with relationship data', function() {
