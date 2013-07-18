@@ -13,12 +13,18 @@
 			if(!this.pageSize) this.pageSize = 10;
 			if(this.rootUrl) this.rootUrl = this.rootUrl.substr(this.rootUrl.length - 1, 1) == '/' ? this.rootUrl.substr(0, params.rootUrl.length - 1) : this.rootUrl;
 			if(!this.defaultParams) this.defaultParams = {};
+			if(!this.service) {
+				this.service = function(method, url, data, success, error) {
+					$.ajax({
+						type: method,
+						url: url,
+						data: data
+					}).done(success).error(error);
+				}
+			}
 
 			if(params.useServerConfig) {
-				$.ajax({
-					type: 'GET',
-					url: GC.rootUrl + '/config'
-				}).done(function(d) {
+				GC.service('GET', GC.rootUrl + '/config', null, function(d) {
 					for(var i in d.entities) {
 						GC.define(d.entities[i].name, d.entities[i].indexName);
 					}
@@ -26,7 +32,7 @@
 						GC.define(d.connections[i].outboundPath, d.connections[i].inboundPath)
 					}
 					if(params.ready) params.ready();
-				}).error(function(err) {
+				},function(err) {
 					//
 				});
 			} else {
@@ -86,15 +92,11 @@
 			var res = graphClientResourceFactory(entityName, endpointName);
 			$.extend(res, data);
 
-			$.ajax({
-			  type: "POST",
-			  url: constructUrl(endpointName),
-			  data: data
-			}).done(function(data) {
+			GC.service('POST', constructUrl(endpointName), data, function(data) {
 				res.id = data.key;
 				res.__setState();
 				if(success) success(data);
-			}).error(function(err) {
+			},function(err) {
 				if(error) error(err);
 			});
 
@@ -145,10 +147,7 @@
 			}
 			urlParams.limit = GC.pageSize;
 
-			$.ajax({
-			  type: "GET",
-			  url: constructUrl(endpointName + '/' + id, urlParams)
-			}).done(function(data) {
+			GC.service('GET', constructUrl(endpointName + '/' + id, urlParams), null, function(data) {
 				//extend the existing resource with data from the service call response
 				//simple properties first
 				for(var prop in data) {
@@ -181,7 +180,7 @@
 					}
 				}
 				if(success) success(data);
-			}).error(function(err) {
+			}, function(err) {
 				if(error) error(err);
 			});
 
@@ -204,16 +203,16 @@
 			//save the changed properties
 			var $this = this;
 			if(numDiffs > 0) {
-				$.ajax({
-				  type: "POST",
-				  url: constructUrl(this.__endpoint + '/' + this.id),
-				  data: data
-				}).done(function(d) {
-					$this.__setState();
-					if(success) success(d);
-				}).error(function(err) {
-					if(error) error(err);
-				});
+				GC.service('POST', 
+					constructUrl(this.__endpoint + '/' + this.id), 
+					data,
+					function(d) {
+						$this.__setState();
+						if(success) success(d);
+					}, function(err) {
+						if(error) error(err);
+					}
+				);
 			} else {
 				if(success) success();
 			}
@@ -222,29 +221,23 @@
 			var $this = this;
 			var url = constructUrl(this.__endpoint + '/' + this.id);
 			this.$save(function() {
-				$.ajax({
-				  type: "GET",
-				  url: url
-				}).done(function(d) {
+				GC.service('GET', url, null, function(d) {
 					$.extend($this, d);
 					if(success) success(d);
-				}).error(function(err) {
+				}, function(err) {
 					if(error) error(err);
 				});
 			});
 		}
 		GraphClientResource.prototype.$delete = function(success, error) {
 			var $this = this;
-			$.ajax({
-			  type: "DELETE",
-			  url: constructUrl(this.__endpoint + '/' + this.id)
-			}).done(function(d) {
+			GC.service('DELETE', constructUrl(this.__endpoint + '/' + this.id), null, function(d) {
 				//remove all properties from the resource object
 				for(var i in $this) {
 					delete $this[i];
 				}
 				if(success) success(d);
-			}).error(function(err) {
+			}, function(err) {
 				if(error) error(err);
 			});
 		}
@@ -329,16 +322,13 @@
 				connRes[this.connection.connectedEntityProperty].data.push(relItm);
 			}
 
-			$.ajax({
-			  type: "POST",
-			  url: constructUrl(entities[entityName].endpoint + '/' + res.id + '/' + this.connection.property),
-			  data: $.extend(d, {relationship: relationshipData })
-			}).done(function(d) {
+			GC.service('POST', constructUrl(entities[entityName].endpoint + '/' + res.id + '/' + this.connection.property),
+				$.extend(d, {relationship: relationshipData }), function(d) {
 				if(d.connectedEntityKey && !connRes.id) {
 					connRes.id = d.connectedEntityKey;
 				}
 				if(success) success(d);
-			}).error(function(err) {
+			}, function(err) {
 				if(error) error(err);
 			});
 		}
@@ -354,12 +344,10 @@
 			connRes[this.connection.connectedEntityProperty].$remove(res.id);
 
 			//send DELETE request to server to save the disconnection
-			$.ajax({
-			  type: "DELETE",
-			  url: constructUrl(entities[entityName].endpoint + '/' + res.id + '/' + this.connection.property + '/' + connRes.id),
-			}).done(function(d) {
+			GC.service('DELETE', constructUrl(entities[entityName].endpoint + '/' + res.id + '/' + this.connection.property + '/' + connRes.id),
+				null, function(d) {
 				if(success) success(d);
-			}).error(function(err) {
+			}, function(err) {
 				if(error) error(err);
 			});
 		}
@@ -380,16 +368,14 @@
 			if(numResults > 0) {
 				urlParams.skip = numResults;
 			}
-			$.ajax({
-			  type: "GET",
-			  url: constructUrl(url, urlParams)
-			}).done(function(d) {
+
+			GC.service('GET', constructUrl(url, urlParams), null, function(d) {
 				for(var i in d.data) {
 					var relItm = new GraphClientRelatedItem(d.data[i], $this.connection.connectedEntity, entities[$this.connection.connectedEntity].endpoint)
 					res[$this.connection.property].data.push(relItm);
 				}
 				if(success) success(d);
-			}).error(function(err) {
+			}, function(err) {
 				if(error) error(err);
 			});
 		}
