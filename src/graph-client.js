@@ -162,6 +162,9 @@
 						res[connProp.property].data && 
 						data[connProp.property] && 
 						data[connProp.property].data) {
+						//set count property
+						res[connProp.property].count = data[connProp.property].count;
+						//set each item in data property
 						for(var j in data[connProp.property].data) {
 							res[connProp.property].data.push(data[connProp.property].data[j]);
 						}

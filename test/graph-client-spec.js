@@ -881,5 +881,17 @@ function startTests() {
 			});
 		});
 
+		it('should set the total number of followers when getting only one page of followers', function() {
+			var b;
+			runs(function() {
+				b = Band.getAll(band.id);
+			});
+			waitsFor(function() { return b.id > 0; }, 'service call to be done', _asyncTimeout);
+			runs(function() {
+				expect(b.followers.data.length).toBe(5);
+				expect(b.followers.count).toBe(25);
+			});
+		});
+
 	});
 }
