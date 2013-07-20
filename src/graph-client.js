@@ -317,12 +317,16 @@
 			}
 
 			if(!connectionExists) {
-				//add connections to start and end entities
+				//add connections to start and end entities, and increase count
 				var connRelItm = new GraphClientRelatedItem(connRes, relationshipData);
 				res[this.connection.property].data.push(connRelItm);
+				if(!res[this.connection.property].count) res[this.connection.property].count = 0;
+				res[this.connection.property].count++;
 
 				var relItm = new GraphClientRelatedItem(res, relationshipData);
 				connRes[this.connection.connectedEntityProperty].data.push(relItm);
+				if(!connRes[this.connection.connectedEntityProperty].count) connRes[this.connection.connectedEntityProperty].count = 0;
+				connRes[this.connection.connectedEntityProperty].count++;
 			}
 
 			GC.service('POST', constructUrl(entities[entityName].endpoint + '/' + res.id + '/' + this.connection.property),
@@ -338,7 +342,7 @@
 
 		GraphClientConnectionProperty.prototype.$disconnect = function() {
 			var connRes, success, error;
-			connRes = arguments[0];
+			connRes = (arguments[0] instanceof GraphClientRelatedItem ? arguments[0].resource : arguments[0]);
 			success = arguments[1];
 			error = arguments[2];
 
@@ -407,6 +411,7 @@
 			if(relItmIdx >= 0) {
 				res[this.connection.property].data.splice(relItmIdx, 1);
 			}
+			res[this.connection.property].count = res[this.connection.property].data.length;
 		}
 
 		var res = new GraphClientResource(data);

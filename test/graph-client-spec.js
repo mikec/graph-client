@@ -783,7 +783,7 @@ function startTests() {
 
 	});
 
-	describe('Getting paged properties', function() {
+	describe('Getting paged properties and counting them', function() {
 
 		var band;
 
@@ -804,6 +804,10 @@ function startTests() {
 			runs(function() {
 				expect(band.followers.data.length).toBe(25);
 			});
+		});
+
+		it('should set the count property of followers to 25', function() {
+			expect(band.followers.count).toBe(25);
 		});
 
 		it('should be able to get a follower from the collection property by its id', function() {
@@ -891,6 +895,102 @@ function startTests() {
 				expect(b.followers.data.length).toBe(5);
 				expect(b.followers.count).toBe(25);
 			});
+		});
+
+		it('should have a member count of 0', function() {
+			var b;
+			runs(function() {
+				b = Band.getAll(band.id);
+			});
+			waitsFor(function() { return b.id > 0; }, 'service call to be done', _asyncTimeout);
+			runs(function() {
+				expect(b.members.data.length).toBe(0);
+				expect(b.members.count).toBe(0);
+			});
+		});
+
+		describe('Removing 3 followers', function() {
+
+			it('should return 3 less followers when getting the band again', function() {
+				var b;
+				var finished;
+				runs(function() {
+					finished = false;
+					var f1 = band.followers.data[6];
+					var f2 = band.followers.data[7];
+					var f3 = band.followers.data[8];
+					band.followers.$disconnect(f1, function() {
+						band.followers.$disconnect(f2, function() {					
+							band.followers.$disconnect(f3, function() {
+								b = Band.getAll(band.id, function() {
+									finished = true;
+								});
+							});
+						});
+					});		
+				});
+				waitsFor(function() { return finished; }, '3 followers to be disconnected', _asyncTimeout);
+				runs(function() {
+					expect(b.followers.count).toBe(22);
+				});
+			});
+
+			/*
+			// THIS TEST WILL PASS, BUT THE RELATIONSHIP DELETE IN NEO4J WILL FAIL:
+			// major issue with deleting relationships consecutively. 
+			// neo4j http service always returns 500 unknown error when trying to delete the 3rd relationship
+			// even though the relationship exists
+			*/
+			/*it('should reduce the followers count by 3 before the server response', function() {
+				var i = 0;
+				runs(function() {
+					var f1 = band.followers.data[6];
+					var f2 = band.followers.data[7];
+					var f3 = band.followers.data[8];
+					band.followers.$disconnect(f1, function() { 
+						i++; 
+					});
+					band.followers.$disconnect(f2, function() { 
+						i++; 
+					});
+					band.followers.$disconnect(f3, function() { 
+						i++; 
+					});
+					expect(band.followers.count).toBe(19);
+				});
+				waitsFor(function() { return i == 3; }, '3 followers to be disconnected', _asyncTimeout);
+				runs(function() {});
+			});*/
+
+		});
+
+		describe('Adding 3 more followers', function() {
+
+			it('should return 3 more followers when getting the band again', function() {
+				var b;
+				var finished;
+				runs(function() {
+					band.followers.$connect({name:'jim1'}, function() {
+						band.followers.$connect({name:'jim2'}, function() {
+							band.followers.$connect({name:'jim3'}, function() {
+								b = Band.getAll(band.id, function() {
+									finished = true;
+								});
+							});
+						});
+					});
+				});
+				waitsFor(function() { return finished; }, '3 followers to be connected', _asyncTimeout);
+				runs(function() {
+					expect(b.followers.count).toBe(25);
+				});
+			});
+
+			it('should increase the followers count by 1 before the server response', function() {
+				band.followers.$connect({name:'jim4'});
+				expect(band.followers.count).toBe(26);
+			});
+
 		});
 
 	});
