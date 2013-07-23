@@ -26,6 +26,30 @@ app.endpoint("thing")
    .endpoint("user.following", "band.followers", "is_following")	
    .endpoint("user.friends", "is_friends_with")
    .endpoint("thing.parts", "has_part")
+
+   //custom property
+   .endpoint("band.connectedBands", function(reqInfo, neoreq) {
+   		var connBands = {};
+   		return neoreq.executeCypherQuery(
+   			"START b1 = node:" + reqInfo.baseEntity.index + "(id={bandId}) MATCH b1<-[r:is_member_of]-u1<-[r2:is_friends_with]->u2-[r3:is_member_of]->b2 RETURN COUNT(b2)",
+   			{bandId:reqInfo.baseEntity.keyValue})
+   		.then(function(r) {
+			connBands.count = r.body.data[0][0];
+			var query = "START b1 = node:" + reqInfo.baseEntity.index + "(id={bandId}) MATCH b1<-[r:is_member_of]-u1<-[r2:is_friends_with]->u2-[r3:is_member_of]->b2 RETURN b2";
+			if(reqInfo.skip) query += " SKIP " + reqInfo.skip;
+			if(reqInfo.limit) query += " LIMIT " + reqInfo.limit;
+			return neoreq.executeCypherQuery(query, {bandId:reqInfo.baseEntity.keyValue});
+		})
+		.then(function(r) {
+			connBands.data = [];
+			for(var i in r.body.data) {
+				var d = r.body.data[i][0].data;
+				d.__resourceType = 'band';
+				connBands.data.push(d);
+			}
+			return app.q.fcall(function() { return connBands; });
+		});
+   })
    
    .get('/CurrentTime', function(req, res) {
 		res.send({'current_time': new Date().toUTCString()});

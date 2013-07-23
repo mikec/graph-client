@@ -61,6 +61,10 @@ function startTests() {
 			expect(i).toBe(6);
 		});
 
+		it('should have a custom property on the band entity', function() {
+			expect(GC.entities["band"].customProperties[0]).toBe('connectedBands');
+		});
+
 		it('should have a Band and a User class defined', function() {
 			expect(User).toBeDefined();
 			expect(User.create).toBeDefined();
@@ -991,6 +995,62 @@ function startTests() {
 				expect(band.followers.count).toBe(26);
 			});
 
+		});
+
+	});
+
+	describe('Getting a custom connection property', function() {
+
+		var user1, user2, band1, band2, band3, band4;
+
+		beforeEach(function() {
+			var done = false;
+			runs(function() {
+				user1 = User.create({name:"Dave Jameson", age:26}, function() {
+					user2 = User.create({name:"Janet Dorado", age:23}, function() {
+						band1 = Band.create({name:"The Bro-tones", genre:"Jock Rock"}, function() {
+							band2 = Band.create({name:"The Bonifide Hustlers", genre:"Pure Awesomeness"}, function() {
+								band1.members.$connect(user1, function() {
+									band2.members.$connect(user2, function() {
+										user1.friends.$connect(user2, function() {
+											band3 = Band.create({name:"junkasaurus-rex", genre:"complete and utter garbage"}, function() {
+												band4 = Band.create({name:"Skalami", genre:"deli meat ska"}, function() {
+													band3.members.$connect(user2, function() {
+														band4.members.$connect(user2, function() {
+															done = true;
+														});
+													});
+												});
+											});
+										});
+									});
+								});
+							});
+						});
+					});
+				});			
+			});
+			waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+			runs(function() { });
+		});
+
+		it('should respond with 3 items in the \'connectedBands\' property', function() {
+			var b1, b2;
+			var done = false;
+			runs(function() {
+				b1 = Band.getAll(band1.id, function() {
+					b2 = Band.getAll(band2.id, function() {
+						done = true;
+					});
+				});
+			});
+			waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+			runs(function() { 
+				expect(b1.connectedBands.data.length).toBe(3);
+				expect(b2.connectedBands.data.length).toBe(1);
+				expect(b1.connectedBands.data[0].resource.id).toBe(b2.id);
+				expect(b2.connectedBands.data[0].resource.id).toBe(b1.id);
+			});
 		});
 
 	});

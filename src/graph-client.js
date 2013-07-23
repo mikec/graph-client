@@ -31,6 +31,9 @@
 					for(var i in d.connections) {
 						GC.define(d.connections[i].outboundPath, d.connections[i].inboundPath)
 					}
+					for(var i in d.customProperties) {
+						defineCustomProperty(d.customProperties[i].property, d.customProperties[i].baseEntity.name);
+					}
 					if(params.ready) params.ready();
 				},function(err) {
 					//
@@ -57,6 +60,12 @@
 			}
 			defineConnection(startConn, endConn);
 		}
+	}
+
+	function defineCustomProperty(propertyName, baseEntityName) {
+		var baseEntity = entities[baseEntityName];
+		if(!baseEntity.customProperties) baseEntity.customProperties = [];
+		baseEntity.customProperties.push(propertyName);
 	}
 
 	function defineEntity(entityName, pluralEntityName) {
@@ -141,6 +150,11 @@
 					if(!urlParams.include) urlParams.include = '';
 					urlParams.include += connProp + ',';
 				}
+				for(var i in entities[entityName].customProperties) {
+					var custProp = entities[entityName].customProperties[i];
+					if(!urlParams.include) urlParams.include = '';
+					urlParams.include += custProp + ',';
+				}
 				if(urlParams.include && urlParams.include.length > 0) {
 					urlParams.include = urlParams.include.substr(0, urlParams.include.length-1);
 				}
@@ -167,6 +181,23 @@
 						//set each item in data property
 						for(var j in data[connProp.property].data) {
 							res[connProp.property].data.push(data[connProp.property].data[j]);
+						}
+					}
+				}
+
+				// and custom properties
+				for(var i in entities[entityName].customProperties) {
+					var custProp = entities[entityName].customProperties[i];
+					if(data[custProp]) {
+						if(isSimpleProp(data[custProp])) {
+							res[custProp] = data[custProp];
+						} else {
+							for(var j in data[custProp].data) {
+								data[custProp].data[j] = {
+									resource: graphClientResourceFactory(data[custProp].data[j])
+								}
+							}
+							res[custProp] = $.extend({}, data[custProp]);
 						}
 					}
 				}
@@ -261,8 +292,8 @@
 		var data, entityName, endpointName;
 		if(typeof(arguments[0]) == 'object') {
 			data = arguments[0];
-			entityName = arguments[1];
-			endpointName = arguments[2];
+			entityName = (data.__resourceType ? data.__resourceType : arguments[1]);
+			endpointName = (entities[entityName] && entities[entityName].endpoint ? entities[entityName].endpoint : arguments[2]);
 		} else {
 			data = null;
 			entityName = arguments[0];
