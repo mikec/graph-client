@@ -26,6 +26,7 @@ app.endpoint("thing")
    .endpoint("user.following", "band.followers", "is_following")	
    .endpoint("user.friends", "is_friends_with")
    .endpoint("thing.parts", "has_part")
+   .endpoint("band.songs", "song.owners", "is_owner_of")
 
    //custom property
    .endpoint("band.connectedBands", function(reqInfo, neoreq) {

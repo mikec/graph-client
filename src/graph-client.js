@@ -306,10 +306,11 @@
 		}
 
 		GraphClientConnectionProperty.prototype.$connect = function() {
-			var connRes, relationshipData, success, error;
+			var connRes, data, relationshipData, success, error;
 			if(arguments[0] instanceof GraphClientResource) {
 				connRes = arguments[0];
 			} else {
+				data = arguments[0];
 				connRes = graphClientResourceFactory(arguments[0], this.connection.connectedEntity, this.connection.connectedEntityProperty)
 			}
 			if(typeof(arguments[1]) == 'function') {
@@ -323,6 +324,8 @@
 			var d;
 			if(connRes.id > 0) {
 				d = { id: connRes.id };
+			} else if(data) {
+				d = data;
 			}
 
 			//check if connection already exists

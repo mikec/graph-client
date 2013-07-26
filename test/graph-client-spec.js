@@ -1,4 +1,5 @@
-var _asyncTimeout = 1000;
+var _asyncTimeout = 5000;
+var _asyncLongTimeout = 15000;
 var _testAccessToken = 'asdflkjas234987234kjasdf';
 var _testGuid = 123098234098123098234;
 
@@ -79,7 +80,7 @@ function startTests() {
 
 		it('should define start and end connection properties', function() {
 			expect(GC.connectionProperties['user'].length).toBe(3);
-			expect(GC.connectionProperties['band'].length).toBe(2);
+			expect(GC.connectionProperties['band'].length).toBe(3);
 		});
 
 		it('should set page size to 5', function() {
@@ -139,7 +140,7 @@ function startTests() {
 			});
 			waitsFor(function() {
 				return callbackNum == 50;
-			}, 'objects to be generated', _asyncTimeout);
+			}, 'objects to be generated', _asyncLongTimeout);
 			runs(function() {
 				expect(users.length).toBe(25);
 				expect(bands.length).toBe(25);
@@ -722,6 +723,8 @@ function startTests() {
 					waitsFor(function() { return done; }, 'server response', _asyncTimeout);
 					runs(function() {
 						expect(b2.id).toBe(u.bands.data[0].resource.id);
+						expect(b2.name).toBe('coconut');
+						expect(b2.genre).toBe('fruit');
 						expect(b2.members.data.length).toBe(1);
 						expect(b2.members.data[0].resource.id).toBe(u.id);
 					});
@@ -775,6 +778,8 @@ function startTests() {
 					waitsFor(function() { return done; }, 'server response', _asyncTimeout);
 					runs(function() {
 						expect(b2.id).toBe(u.bands.data[0].resource.id);
+						expect(b2.name).toBe('coconut');
+						expect(b2.genre).toBe('fruit');
 						expect(b2.members.data.length).toBe(1);
 						expect(b2.members.data[0].resource.id).toBe(u.id);
 						expect(b2.members.data[0].relationship.instrument).toBe('banjo');
@@ -815,7 +820,7 @@ function startTests() {
 		});
 
 		it('should be able to get a follower from the collection property by its id', function() {
-			var b;
+			var b, f;
 			runs(function() {
 				b = Band.getAll(band.id);
 			});
@@ -823,7 +828,10 @@ function startTests() {
 				return (b.id > 0 && (b.followers && b.followers.data.length > 0));
 			}, 'service call to be done', _asyncTimeout);
 			runs(function() {
-				var f = b.followers.$find(users[3].id);
+				f = b.followers.$find(users[3].id);
+			});
+			waitsFor(function() { return f != undefined; }, 'f to be defined', _asyncTimeout);
+			runs(function() {
 				expect(f.resource.id).toBe(users[3].id);
 			});
 		});
@@ -1051,6 +1059,70 @@ function startTests() {
 				expect(b1.connectedBands.data[0].resource.id).toBe(b2.id);
 				expect(b2.connectedBands.data[0].resource.id).toBe(b1.id);
 			});
+		});
+
+	});
+
+	describe('Getting a custom paged endpoint', function() {
+
+		var topSongs;
+		var u1, b1, b2, b3;
+
+		it('should successfully get from the endpoint, after data is setup', function() {
+			var done = false;
+			// create user and bands, and have user follow each band
+			runs(function() {
+				u1 = User.create({name:'mark'}, function() {
+					b1 = Band.create({name:'the totally awesomes'}, function() {
+						b2 = Band.create({name:'praying mantis'}, function() {
+							b3 = Band.create({name:'floss angeles'}, function() {
+								u1.following.$connect(b1, function() {
+									u1.following.$connect(b2, function() {
+										u1.following.$connect(b3, function() {
+											done = true;
+										});
+									});
+								});
+							});
+						});
+					});
+				});
+			});
+			waitsFor(function() { return done; }, 'server response', _asyncLongTimeout);
+			// create 10 songs for each band
+			runs(function() {
+				done = false;
+				function connectSongs(band, songNum, limit, doneFn) {
+					if(songNum > limit) {
+						doneFn();
+					} else {
+						band.songs.$connect({name: "song " + songNum}, function() {
+							connectSongs(band, songNum + 1, limit, doneFn);
+						});					
+					}
+				}
+				connectSongs(b1, 1, 10, function() {
+					connectSongs(b2, 1, 10, function() {
+						connectSongs(b3, 1, 10, function() {
+							done = true;
+						});
+					});
+				});
+			});
+			waitsFor(function() { return done; }, 'server response', _asyncLongTimeout);
+			runs(function() { 
+				//expect(b1.songs.data.length).toBe(10);
+				//expect(b2.songs.data.length).toBe(10);
+				//expect(b3.songs.data.length).toBe(10);
+				/*done = false;
+				topSongs = GC.popular.$getPage(u1.id, function() {
+					done = true;
+				});*/
+			});
+		});
+
+		it('should have paged data after the response', function() {
+
 		});
 
 	});
