@@ -822,16 +822,13 @@ function startTests() {
 		it('should be able to get a follower from the collection property by its id', function() {
 			var b, f;
 			runs(function() {
-				b = Band.getAll(band.id);
+				b = Band.getAll(band.id, { pageSize: 25 });
 			});
 			waitsFor(function() { 
 				return (b.id > 0 && (b.followers && b.followers.data.length > 0));
 			}, 'service call to be done', _asyncTimeout);
 			runs(function() {
 				f = b.followers.$find(users[3].id);
-			});
-			waitsFor(function() { return f != undefined; }, 'f to be defined', _asyncTimeout);
-			runs(function() {
 				expect(f.resource.id).toBe(users[3].id);
 			});
 		});

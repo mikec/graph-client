@@ -159,7 +159,7 @@
 					urlParams.include = urlParams.include.substr(0, urlParams.include.length-1);
 				}
 			}
-			urlParams.limit = GC.pageSize;
+			urlParams.limit = (options && options.pageSize ? options.pageSize : GC.pageSize);
 
 			GC.service('GET', constructUrl(endpointName + '/' + id, urlParams), null, function(data) {
 				//extend the existing resource with data from the service call response
