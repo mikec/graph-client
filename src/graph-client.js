@@ -34,6 +34,9 @@
 					for(var i in d.customProperties) {
 						defineCustomProperty(d.customProperties[i].property, d.customProperties[i].baseEntity.name);
 					}
+					for(var i in d.customEndpoints) {
+						defineCustomEndpoint(d.customEndpoints[i]);
+					}
 					if(params.ready) params.ready();
 				},function(err) {
 					//
@@ -66,6 +69,36 @@
 		var baseEntity = entities[baseEntityName];
 		if(!baseEntity.customProperties) baseEntity.customProperties = [];
 		baseEntity.customProperties.push(propertyName);
+	}
+
+	function defineCustomEndpoint(endpointName) {
+		GC[endpointName] = {};
+		GC[endpointName].data = [];
+		GC[endpointName].$getPage = function() {
+			var pageNumber, success, error;
+			if(typeof(arguments[0]) == 'function') {
+				success = arguments[0]; error = arguments[1];
+			} else {
+				pageNumber = arguments[0]; success = arguments[1]; error = arguments[2];
+			}
+
+			var url = endpointName;
+			var urlParams = {};
+			urlParams.limit = GC.pageSize;
+			var numResults = GC[endpointName].data.length;
+			if(numResults > 0) {
+				urlParams.skip = numResults;
+			}
+
+			GC.service('GET', constructUrl(url, urlParams), null, function(d) {
+				for(var i in d) {
+					GC[endpointName].data.push(graphClientResourceFactory(d[i]));
+				}
+				if(success) success(d);
+			}, function(err) {
+				if(error) error(err);
+			});
+		};
 	}
 
 	function defineEntity(entityName, pluralEntityName) {

@@ -76,11 +76,13 @@ function startTests() {
 		it('should define an entity named user and an entity named band', function() {
 			expect(GC.entities['user']).toBeDefined();
 			expect(GC.entities['band']).toBeDefined();
+			expect(GC.entities['song']).toBeDefined();
 		});
 
 		it('should define start and end connection properties', function() {
-			expect(GC.connectionProperties['user'].length).toBe(3);
+			expect(GC.connectionProperties['user'].length).toBe(4);
 			expect(GC.connectionProperties['band'].length).toBe(3);
+			expect(GC.connectionProperties['song'].length).toBe(2);
 		});
 
 		it('should set page size to 5', function() {
@@ -1063,7 +1065,7 @@ function startTests() {
 	describe('Getting a custom paged endpoint', function() {
 
 		var topSongs;
-		var u1, b1, b2, b3;
+		var u1, u2, u3, u4, b1, b2, b3;
 
 		it('should successfully get from the endpoint, after data is setup', function() {
 			var done = false;
@@ -1076,7 +1078,13 @@ function startTests() {
 								u1.following.$connect(b1, function() {
 									u1.following.$connect(b2, function() {
 										u1.following.$connect(b3, function() {
-											done = true;
+											u2 = User.create({name:'bill'}, function() {
+												u3 = User.create({name:'john'}, function() {
+													u4 = User.create({name:'lilly'}, function() {
+														done = true;
+													});
+												});
+											});
 										});
 									});
 								});
@@ -1107,19 +1115,79 @@ function startTests() {
 				});
 			});
 			waitsFor(function() { return done; }, 'server response', _asyncLongTimeout);
+			//have users promote songs
+			runs(function() {
+				done = false;
+				u1.promotions.$connect(b1.songs.data[1].resource, function() {
+					u2.promotions.$connect(b1.songs.data[1].resource, function() {
+						u3.promotions.$connect(b1.songs.data[1].resource, function() {
+							u4.promotions.$connect(b1.songs.data[1].resource, function() {
+								u1.promotions.$connect(b2.songs.data[4].resource, function() {
+									u2.promotions.$connect(b2.songs.data[4].resource, function() {
+										u3.promotions.$connect(b3.songs.data[6].resource, function() {
+											u4.promotions.$connect(b3.songs.data[6].resource, function() {
+												done = true;
+											});
+										});
+									});
+								});
+							});
+						});
+					});
+				});
+			});
+			waitsFor(function() { return done; }, 'server response', _asyncLongTimeout);
 			runs(function() { 
-				//expect(b1.songs.data.length).toBe(10);
-				//expect(b2.songs.data.length).toBe(10);
-				//expect(b3.songs.data.length).toBe(10);
-				/*done = false;
-				topSongs = GC.popular.$getPage(u1.id, function() {
-					done = true;
-				});*/
+				expect(b1.songs.data.length).toBe(10);
+				expect(b2.songs.data.length).toBe(10);
+				expect(b3.songs.data.length).toBe(10);
+				expect(u1.promotions.data.length).toBe(2);
+				expect(b1.songs.data[1].resource.promoters.data.length).toBe(4);
 			});
 		});
 
 		it('should have paged data after the response', function() {
+			var done;
+			runs(function() {
+				done = false;
+				GC.topsongs.$getPage(function() {
+					done = true;
+				});
+			});
+			waitsFor(function() { return done; }, 'server response', _asyncLongTimeout);
+			runs(function() {
+				expect(GC.topsongs.data.length).toBe(5);
+			});
+		});
 
+		it('should have paged data after the response', function() {
+			var done;
+			runs(function() {
+				done = false;
+				GC.topsongs.$getPage(function() {
+					done = true;
+				});
+			});
+			waitsFor(function() { return done; }, 'server response', _asyncLongTimeout);
+			runs(function() {
+				expect(GC.topsongs.data.length).toBe(10);
+
+				// all id's should be unique
+				var uniqueIds = true;
+				var ids = {};
+				for(var i in GC.topsongs.data) {
+					if(ids[GC.topsongs.data[i].id]) {
+						uniqueIds = false;
+						break;
+					}
+					ids[GC.topsongs.data[i].id] = true;
+				}
+				expect(uniqueIds).toBe(true);
+			});
+		});
+
+		it('should convert response data to resource objects', function() {
+			expect(GC.topsongs.data[3].$save).toBeDefined();
 		});
 
 	});

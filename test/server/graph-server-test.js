@@ -27,8 +27,9 @@ app.endpoint("thing")
    .endpoint("user.friends", "is_friends_with")
    .endpoint("thing.parts", "has_part")
    .endpoint("band.songs", "song.owners", "is_owner_of")
+   .endpoint("user.promotions", "song.promoters", "promoted")
 
-   //custom property
+   //custom connection property
    .endpoint("band.connectedBands", function(reqInfo, neoreq) {
    		var connBands = {};
    		return neoreq.executeCypherQuery(
@@ -50,6 +51,25 @@ app.endpoint("thing")
 			}
 			return app.q.fcall(function() { return connBands; });
 		});
+   })
+
+   .endpoint("topsongs", function(reqInfo, neoreq) {
+   		var query = "START s = node:songs('*:*') MATCH s<-[?:promoted]-u, s<-[:is_owner_of]-b RETURN s, b, COUNT(u) AS promo_count ORDER BY promo_count DESC, s.id";
+   		if(!reqInfo.skip) reqInfo.skip = 0;
+   		if(!reqInfo.limit) reqInfo.limit = 100;
+   		query += " SKIP " + reqInfo.skip;
+		query += " LIMIT " + reqInfo.limit;
+   		return neoreq.executeCypherQuery(query).then(function(r) {
+   			var topSongs = [];
+			for(var i in r.body.data) {
+				var d = r.body.data[i][0].data;
+				d.__owner = r.body.data[i][1].data;
+				d.__promotions = r.body.data[i][2];
+				d.__resourceType = 'song';
+				topSongs.push(d);
+			}
+   			return app.q.fcall(function() { return topSongs; });
+   		});
    })
    
    .get('/CurrentTime', function(req, res) {
