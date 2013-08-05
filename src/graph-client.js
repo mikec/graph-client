@@ -11,7 +11,7 @@
 
 			//defaults
 			if(!this.pageSize) this.pageSize = 10;
-			if(this.rootUrl) this.rootUrl = this.rootUrl.substr(this.rootUrl.length - 1, 1) == '/' ? this.rootUrl.substr(0, params.rootUrl.length - 1) : this.rootUrl;
+			if(this.configUrl) this.configUrl = this.configUrl.substr(this.configUrl.length - 1, 1) == '/' ? this.configUrl.substr(0, params.configUrl.length - 1) : this.configUrl;
 			if(!this.defaultParams) this.defaultParams = {};
 			if(!this.service) {
 				this.service = function(method, url, data, success, error) {
@@ -22,29 +22,27 @@
 					}).done(success).error(error);
 				}
 			}
-
-			if(params.useServerConfig) {
-				GC.service('GET', GC.rootUrl + '/config', null, function(d) {
-					for(var i in d.entities) {
-						GC.define(d.entities[i].name, d.entities[i].indexName);
-					}
-					for(var i in d.connections) {
-						GC.define(d.connections[i].outboundPath, d.connections[i].inboundPath)
-					}
-					for(var i in d.customProperties) {
-						defineCustomProperty(d.customProperties[i].property, d.customProperties[i].baseEntity.name);
-					}
-					for(var i in d.customEndpoints) {
-						defineCustomEndpoint(d.customEndpoints[i]);
-					}
-					if(params.ready) params.ready();
-				},function(err) {
-					//
-				});
-			} else {
-				if(params.ready) params.ready();
-			}
 		}
+	}
+
+	GC.configure = function(success, error) {
+		GC.service('GET', GC.configUrl + '/config', null, function(d) {
+			for(var i in d.entities) {
+				GC.define(d.entities[i].name, d.entities[i].indexName);
+			}
+			for(var i in d.connections) {
+				GC.define(d.connections[i].outboundPath, d.connections[i].inboundPath)
+			}
+			for(var i in d.customProperties) {
+				defineCustomProperty(d.customProperties[i].property, d.customProperties[i].baseEntity.name);
+			}
+			for(var i in d.customEndpoints) {
+				defineCustomEndpoint(d.customEndpoints[i]);
+			}
+			if(success && typeof(success) == 'function') success();
+		},function(err) {
+			if(error && typeof(error) == 'function') error(err);
+		});
 	}
 
 	GC.define = function() {
@@ -556,7 +554,7 @@
 	}
 
 	function constructUrl(url, params) {
-		url = GC.rootUrl + '/' + url;
+		url = GC.configUrl + '/' + url;
 		if(!params) params = {};
 		$.extend(params, GC.defaultParams);
 		for(var p in params) {

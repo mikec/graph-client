@@ -23,12 +23,8 @@ function startTests() {
 			var done = false;
 			runs(function() {
 				GC.setup({
-					rootUrl: 'http://localhost:3000',
-					pageSize: 5,
-					useServerConfig: true,
-					ready: function() {
-						done = true;
-					},		
+					configUrl: 'http://localhost:3000',
+					pageSize: 5,		
 					defaultParams: {
 						access_token: _testAccessToken,
 						guid: _testGuid
@@ -38,6 +34,10 @@ function startTests() {
 				GC.define('band');
 				GC.define('user.bands', 'band.members');
 				GC.define('user.following', 'band.followers');*/
+
+				GC.configure(function() {
+					done = true;
+				});
 			});
 			waitsFor(function() {
 				return done;
@@ -94,30 +94,30 @@ function startTests() {
 			expect(GC.defaultParams.guid).toBe(_testGuid);
 		});
 
-		describe('Setup with a root URL that doesn\'t have a trailing slash', function() {
+		describe('Setup with a config URL that doesn\'t have a trailing slash', function() {
 
 			beforeEach(function() {
 				GC.setup({
-					rootUrl: 'http://localhost:3000'
+					configUrl: 'http://localhost:3000'
 				});
 			});
 
-			it('should set a root url without a trailing slash', function() {
-				expect(GC.rootUrl).toBe('http://localhost:3000');
+			it('should set a config url without a trailing slash', function() {
+				expect(GC.configUrl).toBe('http://localhost:3000');
 			});
 
 		});
 
-		describe('Setup with a root URL that has a trailing slash', function() {
+		describe('Setup with a config URL that has a trailing slash', function() {
 
 			beforeEach(function() {
 				GC.setup({
-					rootUrl: 'http://localhost:3000/'
+					configUrl: 'http://localhost:3000/'
 				});
 			});
 
-			it('should set a root url without a trailing slash', function() {
-				expect(GC.rootUrl).toBe('http://localhost:3000');
+			it('should set a config url without a trailing slash', function() {
+				expect(GC.configUrl).toBe('http://localhost:3000');
 			});
 
 		});
