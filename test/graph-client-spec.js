@@ -1191,4 +1191,79 @@ function startTests() {
 		});
 
 	});
+
+	describe('Creating an entity that has an "after" processing function attached', function() {
+
+		var usr;
+		var done = false;
+		beforeEach(function() {
+			runs(function() {
+				usr = User.create({id:989898, name:'jim bob'}, function() {
+					done = true;
+				});
+			});
+		});
+
+		it('should run the "after" processing function, which will add a new property after the user is created', function() {		
+			waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+			runs(function() {
+				expect(usr.newProp).toBe('new prop val');
+			});
+		});
+
+		it('should return the user with the new property updated', function() {		
+			var u;
+			var gotUser = false;
+			waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+			runs(function() {
+				u = User.get(989898, function() {
+					gotUser = true;
+				});
+			});
+			waitsFor(function() { return gotUser; }, 'server response', _asyncTimeout);
+			runs(function() {
+				expect(u.newProp).toBe('new prop val');
+			});
+		});
+
+	});
+
+	describe('Creating an entity that has "before" processing attached', function() {
+
+		var usr;
+		var done = false;
+		beforeEach(function() {
+			runs(function() {
+				usr = User.create({id:878787, name:'jannet dorado'}, function() {
+					done = true;
+				});
+			});
+		});
+
+		it('should respond with a new property that was added by the processing function', function() {
+			waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+			runs(function(){
+				expect(usr.created).toBeDefined();
+			});
+		});
+
+		it('should respond with a new property that was added by the processing function, when getting the entity again', function() {
+			var u; var gotUser = false;
+			waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+			runs(function(){
+				u = User.get(878787, function() {
+					gotUser = true;
+				});
+			});
+			waitsFor(function() { return gotUser; }, 'server response', _asyncTimeout);
+			runs(function() {
+				expect(u.created).toBeDefined();
+			});
+		});
+
+	});
+
 }
+
+
+

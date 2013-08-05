@@ -71,6 +71,29 @@ app.endpoint("thing")
    			return app.q.fcall(function() { return topSongs; });
    		});
    })
+
+   .before('create', 'user', function(data, reqInfo, neo, next) {
+   		if(data && data.id == 878787) {
+   			data.created = new Date().getTime();
+   			next();
+   		} else {
+   			next();
+   		}
+   })
+
+   .after('create', 'user', function(resData, reqInfo, neo, next) {
+   		if(resData && resData.key == 989898) {
+   			neo.updateIndexedNode({
+   				id: 989898,
+   				newProp: 'new prop val'
+   			}, 'users').then(function() {
+   				resData.data.newProp = 'new prop val';
+   				next();
+   			});
+   		} else {
+   			next();
+   		}
+   })
    
    .get('/CurrentTime', function(req, res) {
 		res.send({'current_time': new Date().toUTCString()});

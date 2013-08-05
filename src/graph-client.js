@@ -136,6 +136,11 @@
 
 			GC.service('POST', constructUrl(endpointName), data, function(data) {
 				res.id = data.key;
+				if(data.data) {
+					for(var p in data.data) {
+						res[p] = data.data[p];
+					}
+				}
 				res.__setState();
 				if(success) success(data);
 			},function(err) {
