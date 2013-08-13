@@ -1263,6 +1263,51 @@ function startTests() {
 
 	});
 
+	describe('Creating an entity that has "before" and "after" processing attached', function() {
+
+		var b;
+		var done = false;
+		beforeEach(function() {
+			runs(function() {
+				b = Band.create({id:797979797979,'name':'the dudes'}, function() {
+					done = true;
+				});
+			});
+		});
+
+		it('should add a property to the band object', function() {
+			waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+			runs(function(){
+				expect(b.createdPre).toBe('bandtest');
+			});
+		})
+
+	});
+
+	describe('Creating an entity that has "before" and "after" processing attached using \'*\'', function() {
+
+		var b, u;
+		var done = false;
+		beforeEach(function() {
+			runs(function() {
+				b = Band.create({id:8080808080808,'name':'the dudes'}, function() {
+					u = User.create({id:6767676767676, 'name':'brian'}, function() {
+						done = true;
+					});
+				});
+			});
+		});
+
+		it('should add a property to the band object', function() {
+			waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+			runs(function() {
+				expect(b.createdAll).toBe('allTest');
+				expect(u.createdAll).toBe('allTest');
+			});
+		});
+
+	});
+
 }
 
 

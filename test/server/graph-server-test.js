@@ -30,17 +30,17 @@ app.endpoint("thing")
    .endpoint("user.promotions", "song.promoters", "promoted")
 
    //custom connection property
-   .endpoint("band.connectedBands", function(reqInfo, neoreq) {
+   .endpoint("band.connectedBands", function(keyValue, options) {
    		var connBands = {};
-   		return neoreq.executeCypherQuery(
-   			"START b1 = node:" + reqInfo.baseEntity.index + "(id={bandId}) MATCH b1<-[r:is_member_of]-u1<-[r2:is_friends_with]->u2-[r3:is_member_of]->b2 RETURN COUNT(b2)",
-   			{bandId:reqInfo.baseEntity.keyValue})
+   		return app.executeCypherQuery(
+   			"START b1 = node:bands(id={bandId}) MATCH b1<-[r:is_member_of]-u1<-[r2:is_friends_with]->u2-[r3:is_member_of]->b2 RETURN COUNT(b2)",
+   			{bandId:keyValue})
    		.then(function(r) {
 			connBands.count = r.body.data[0][0];
-			var query = "START b1 = node:" + reqInfo.baseEntity.index + "(id={bandId}) MATCH b1<-[r:is_member_of]-u1<-[r2:is_friends_with]->u2-[r3:is_member_of]->b2 RETURN b2";
-			if(reqInfo.skip) query += " SKIP " + reqInfo.skip;
-			if(reqInfo.limit) query += " LIMIT " + reqInfo.limit;
-			return neoreq.executeCypherQuery(query, {bandId:reqInfo.baseEntity.keyValue});
+			var query = "START b1 = node:bands(id={bandId}) MATCH b1<-[r:is_member_of]-u1<-[r2:is_friends_with]->u2-[r3:is_member_of]->b2 RETURN b2";
+			if(options.skip) query += " SKIP " + options.skip;
+			if(options.limit) query += " LIMIT " + options.limit;
+			return app.executeCypherQuery(query, {bandId:keyValue});
 		})
 		.then(function(r) {
 			connBands.data = [];
@@ -53,13 +53,13 @@ app.endpoint("thing")
 		});
    })
 
-   .endpoint("topsongs", function(reqInfo, neoreq) {
+   .endpoint("topsongs", function(graphReq) {
    		var query = "START s = node:songs('*:*') MATCH s<-[?:promoted]-u, s<-[:is_owner_of]-b RETURN s, b, COUNT(u) AS promo_count ORDER BY promo_count DESC, s.id";
-   		if(!reqInfo.skip) reqInfo.skip = 0;
-   		if(!reqInfo.limit) reqInfo.limit = 100;
-   		query += " SKIP " + reqInfo.skip;
-		query += " LIMIT " + reqInfo.limit;
-   		return neoreq.executeCypherQuery(query).then(function(r) {
+   		if(!graphReq.skip) graphReq.skip = 0;
+   		if(!graphReq.limit) graphReq.limit = 100;
+   		query += " SKIP " + graphReq.skip;
+		query += " LIMIT " + graphReq.limit;
+   		return app.executeCypherQuery(query).then(function(r) {
    			var topSongs = [];
 			for(var i in r.body.data) {
 				var d = r.body.data[i][0].data;
@@ -72,7 +72,7 @@ app.endpoint("thing")
    		});
    })
 
-   .before('create', 'user', function(data, reqInfo, neo, next) {
+   .before('create', 'user', function(data, graphReq, next) {
    		if(data && data.id == 878787) {
    			data.created = new Date().getTime();
    			next();
@@ -81,9 +81,9 @@ app.endpoint("thing")
    		}
    })
 
-   .after('create', 'user', function(resData, reqInfo, neo, next) {
+   .after('create', 'user', function(resData, graphReq, next) {
    		if(resData && resData.key == 989898) {
-   			neo.updateIndexedNode({
+   			app.updateIndexedNode({
    				id: 989898,
    				newProp: 'new prop val'
    			}, 'users').then(function() {
@@ -94,42 +94,23 @@ app.endpoint("thing")
    			next();
    		}
    })
+
+   .before('create', 'band', function(data, graphReq, next) {
+      if(data && data.id == 797979797979) {
+         data.createdPre = 'bandtest';
+      }
+      next();
+   })
+
+   .before('create', '*', function(data, graphReq, next) {
+      if(data && (data.id == 8080808080808 || data.id == 6767676767676)) {
+         data.createdAll = 'allTest';
+      }
+      next();
+   })
    
    .get('/CurrentTime', function(req, res) {
 		res.send({'current_time': new Date().toUTCString()});
-   })
-   
-   .accessRule("create", "thing", function(reqInfo, entityData) {
-		if(!entityData) return;
-		if(entityData.color == 'green') throw new Error("No green things allowed");
-		else entityData.created = new Date().toUTCString();
-	})
-	
-   .accessRule("create,update,delete", "band", function(reqInfo, entityData) {
-		if(!entityData) return;
-		if(entityData.name == "the beef patties") throw new Error("That band name sucks");
-		else if(entityData.name == "the smokin joes") entityData.created = new Date().toUTCString();
-	})
-	
-   .accessRule("read", "thing", function(reqInfo, entityData) {
-		if(!entityData) return;
-		if(entityData.color == "red") {
-			if(reqInfo.request.query.accesstoken == "abc123") {
-				entityData.color = "red(modified)";
-			} else throw new Error("You're not allowed to view red things");
-		}
-	})
-   
-   .accessRule("create", "user.bands", function(reqInfo, baseEntityData, connectedEntityData, connectionData) {
-		if(!baseEntityData || !connectedEntityData || !connectionData) return;
-		if(baseEntityData.fbid == 444 && connectedEntityData.fbid == 445 && connectionData.instrument == "maracas") throw new Error("user[fbid=444] can't play maracas for band[fbid=445]");
-		if(baseEntityData.fbid == 446 && connectedEntityData.fbid == 445 && connectionData.instrument == "maracas") throw new Error("band[fbid=445] can't let user[fbid=446] play maracas");
-	})
-   
-   .accessRule("create", "band.members", function(reqInfo, baseEntityData, connectedEntityData, connectionData) {
-		if(!baseEntityData || !connectedEntityData || !connectionData) return;
-		if(baseEntityData.fbid == 447 && connectedEntityData.fbid == 448 && connectionData.instrument == "cowbell") throw new Error("user[fbid=447] can't play cowbell for band[fbid=448]");
-		if(baseEntityData.fbid == 449 && connectedEntityData.fbid == 448 && connectionData.instrument == "cowbell") throw new Error("band[fbid=448] can't let user[fbid=449] play cowbell");
-	});
+   });
 
 app.listen(3000);
