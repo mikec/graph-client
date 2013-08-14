@@ -97,6 +97,20 @@
 				if(error) error(err);
 			});
 		};
+		GC[endpointName].$post = function() {
+			var data, success, error;
+			if(typeof(arguments[0]) == 'function') {
+				success = arguments[0]; error = arguments[1];
+			} else {
+				data = arguments[0]; success = arguments[1]; error = arguments[2];
+			}
+
+			GC.service('POST', constructUrl(endpointName), data, function(d) {
+				if(success) success(d);
+			}, function(err) {
+				if(error) error(err);
+			});
+		}
 	}
 
 	function defineEntity(entityName, pluralEntityName) {
