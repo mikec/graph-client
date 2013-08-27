@@ -821,6 +821,22 @@ function startTests() {
 			expect(band.followers.count).toBe(25);
 		});
 
+		it('should set the count property of followers to 25 when getting the connection property page for the first time', function() {
+			var b;
+			var done = false;
+			runs(function() {
+				b = Band.get(band.id, function() {
+					b.followers.$getPage(function() {
+						done = true;
+					});
+				});
+			});
+			waitsFor(function() { return done; }, 'service call', _asyncTimeout);
+			runs(function() {
+				expect(b.followers.count).toBe(25);
+			});
+		});
+
 		it('should be able to get a follower from the collection property by its id', function() {
 			var b, f;
 			runs(function() {

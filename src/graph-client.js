@@ -465,6 +465,7 @@
 					var relItm = new GraphClientRelatedItem(d.data[i], $this.connection.connectedEntity, entities[$this.connection.connectedEntity].endpoint)
 					res[$this.connection.property].data.push(relItm);
 				}
+				res[$this.connection.property].count = d.count;
 				if(success) success(d);
 			}, function(err) {
 				if(error) error(err);
