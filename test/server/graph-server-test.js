@@ -108,6 +108,34 @@ app.endpoint("thing")
       }
       next();
    })
+
+   .before('connect', 'user.bands', function(data, graphReq, next) {
+      if(data && data.band && data.user) {
+         if(data.user.id == 919191919191919) {
+            data.band.created = "thisinstant";
+            data.relationship.status = "pending";
+         } else if(data.band.id == 92929292929292) {
+            data.relationship.created = "rightnow";
+         }
+      }
+      next();
+   })   
+
+   .before('connect', 'band.members', function(data, graphReq, next) {
+      if(data && data.band && data.user) {
+         if(data.band.id == 94949494949494949) {
+            data.relationship.firsttime = "yes";
+         }
+      }
+      next();
+   })
+
+   .before('disconnect', 'band.followers', function(data, graphReq, next) {
+      next();
+   })
+   .after('disconnect', 'band.followers', function(data, graphReq, next) {
+      next();
+   })
    
    .get('/CurrentTime', function(req, res) {
 		res.send({'current_time': new Date().toUTCString()});

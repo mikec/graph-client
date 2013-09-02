@@ -1324,6 +1324,86 @@ function startTests() {
 
 	});
 
+	describe('Creating a connection that has "before" and "after" processing attached', function() {
+
+		describe('to the outbound connection path', function() {
+
+			describe('while creating a new connected object', function() {
+				var b, u, user, band;
+				var done = false;
+				beforeEach(function() {
+					runs(function() {
+						u = User.create({id:919191919191919, 'name':'jim'}, function() {
+							u.bands.$connect({'name':'the dudes'}, function() {
+								done = true;
+							});
+						});
+					});
+				});
+
+				it('should add additional data to the connected entity and additional relationship data, from the before processing function', function() {
+					waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+					runs(function() {
+						expect(u.bands.data[0].resource.created).toBe("thisinstant");
+						expect(u.bands.data[0].relationship.status).toBe("pending");
+					});
+				});
+			});
+
+			describe('while connecting an existing object', function() {
+				var b, u, user;
+				var done = false;
+				beforeEach(function() {
+					runs(function() {
+						b = Band.create({id:92929292929292,'name':'the dudes'}, function() {
+							u = User.create({id:9393939393939393, 'name':'jim'}, function() {
+								u.bands.$connect(b, { instrument: "guitar" }, function() {
+									done = true;
+								});
+							});
+						});
+					});
+				});
+
+				it('should add additional relationship data, from the before processing function', function() {
+					waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+					runs(function() {
+						expect(u.bands.data[0].relationship.created).toBe("rightnow")
+					});
+				});
+			});
+
+		});
+
+		describe('to the inbound connection path', function() {
+
+			var b, u;
+			var done = false;
+			beforeEach(function() {
+				runs(function() {
+					b = Band.create({id:94949494949494949,'name':'the dudes'}, function() {
+						u = User.create({id:95959595959595959, 'name':'johnny'}, function() {
+							b.members.$connect(u, { instrument: "banjo" }, function() {
+								done = true;
+							});
+						});
+					});
+				});
+			});
+
+			it('should add additional relationship data, from the before processing function', function() {
+				waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+				runs(function() {
+					expect(u.bands.data[0].relationship.firsttime).toBe("yes")
+				});
+			});
+
+		});
+
+
+
+	});
+
 }
 
 

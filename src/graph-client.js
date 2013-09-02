@@ -357,6 +357,8 @@
 
 		GraphClientConnectionProperty.prototype.$connect = function() {
 			var connRes, data, relationshipData, success, error;
+			var $this = this;
+
 			if(arguments[0] instanceof GraphClientResource) {
 				connRes = arguments[0];
 			} else {
@@ -378,31 +380,15 @@
 				d = data;
 			}
 
-			//check if connection already exists
-			var connectionExists = false;
-			for(var i in res[this.connection.property].data) {
-				var r = res[this.connection.property].data[i].resource;
-				if(r.id == connRes.id) {
-					//add relationship data to existing connection
-					$.extend(res[this.connection.property].data[i].relationship, relationshipData);
-					connectionExists = true;
-					break;
-				}
-			}
-
-			if(connectionExists) { //add relationship data to inverse connection 
-				for(var i in connRes[this.connection.connectedEntityProperty].data) {
-					var r = connRes[this.connection.connectedEntityProperty].data[i].resource;
-					if(r.id == res.id) {
-						$.extend(connRes[this.connection.connectedEntityProperty].data[i].relationship, relationshipData);
-						break;
-					}
-				}
-			}
-
-			if(!connectionExists) {
+			var connRelItem = this.$find(connRes.id);
+			if(connRelItem) { // relationship exists
+				$.extend(connRelItem.relationship, relationshipData);
+				//add relationship data to inverse connection 
+				var relItm = connRes[this.connection.connectedEntityProperty].$find(res.id);
+				$.extend(relItm.relationship, relationshipData);
+			} else { // relationship does not exist
 				//add connections to start and end entities, and increase count
-				var connRelItm = new GraphClientRelatedItem(connRes, relationshipData);
+				connRelItm = new GraphClientRelatedItem(connRes, relationshipData);
 				res[this.connection.property].data.push(connRelItm);
 				if(!res[this.connection.property].count) res[this.connection.property].count = 0;
 				res[this.connection.property].count++;
@@ -413,11 +399,25 @@
 				connRes[this.connection.connectedEntityProperty].count++;
 			}
 
-			GC.service('POST', constructUrl(entities[entityName].endpoint + '/' + res.id + '/' + this.connection.property),
-				$.extend(d, {relationship: relationshipData }), function(d) {
-				if(d.connectedEntityKey && !connRes.id) {
-					connRes.id = d.connectedEntityKey;
+			GC.service('POST', constructUrl(entities[entityName].endpoint + '/' + res.id + '/' + this.connection.property), $.extend(d, {relationship: relationshipData }), 
+			function(d) {
+				//copy the simple properties from the response to the connected resource
+				for(var prop in d.connectedEntity) {
+					var pVal = d.connectedEntity[prop];
+					if(isSimpleProp(pVal)) {
+						connRes[prop] = pVal;
+					};
 				}
+				//copy relationship data from response to the related items
+				var connRelItem = $this.$find(connRes.id);
+				if(connRelItem) { // relationship exists
+					$.extend(connRelItem.relationship, d.relationship);
+					//add relationship data to inverse connection 
+					var relItm = connRes[$this.connection.connectedEntityProperty].$find(res.id);
+					$.extend(relItm.relationship, d.relationship);
+				}
+
+				connRes.__setState();
 				if(success) success(d);
 			}, function(err) {
 				if(error) error(err);
