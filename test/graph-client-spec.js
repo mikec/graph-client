@@ -1404,6 +1404,52 @@ function startTests() {
 
 	});
 
+	describe('Deleting a connection that has before and after processing attached', function() {
+
+		var b, u, band;
+		var errResp;
+		var done = false;
+		beforeEach(function() {
+			runs(function() {
+				b = Band.create({name:'the dudes'}, function() {
+					u = User.create({id:96969696969696, 'name':'johnny'}, function() {
+						b.followers.$connect(u, { instrument: "banjo" }, function() {
+							b.followers.$disconnect(u, null, function(err) {
+								errResp = err;
+								band = Band.getAll(b.id, function() {
+									done = true;
+								});
+							});
+						});
+					});
+				});
+			});
+		});
+
+		describe('', function() {
+			beforeEach(function() { done = false; });
+			it('should respond with an error', function() {
+				waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+				runs(function() {
+					expect(errResp).toBeDefined();
+					expect(errResp.responseText.indexOf('You can\'t disconnect user 96969696969696 from band')).toBeGreaterThan(-1);
+				});
+			});
+		});
+
+		describe('', function() {
+			beforeEach(function() { done = false; });
+			it('should not delete the relationship from the database', function() {
+				waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+				runs(function() {
+					expect(band.followers.count).toBe(1);
+					expect(band.followers.data[0].resource.id).toBe('96969696969696');
+				});
+			});
+		});
+
+	});
+
 }
 
 

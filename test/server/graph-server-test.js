@@ -131,7 +131,12 @@ app.endpoint("thing")
    })
 
    .before('disconnect', 'band.followers', function(data, graphReq, next) {
-      next();
+      var restrictedUid = 96969696969696;
+      if(data && data.band && data.user && data.user.id == restrictedUid) {
+         throw new Error('You can\'t disconnect user ' + restrictedUid + ' from band ' + data.band.id);
+      } else {
+         next();
+      }
    })
    .after('disconnect', 'band.followers', function(data, graphReq, next) {
       next();
