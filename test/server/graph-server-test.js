@@ -30,17 +30,17 @@ app.endpoint("thing")
    .endpoint("user.promotions", "song.promoters", "promoted")
 
    //custom connection property
-   .endpoint("band.connectedBands", function(keyValue, options) {
+   .endpoint("band.connectedBands", function(graphReq, options) {
    		var connBands = {};
    		return app.executeCypherQuery(
    			"START b1 = node:bands(id={bandId}) MATCH b1<-[r:is_member_of]-u1<-[r2:is_friends_with]->u2-[r3:is_member_of]->b2 RETURN COUNT(b2)",
-   			{bandId:keyValue})
+   			{bandId:graphReq.keyValue})
    		.then(function(r) {
 			connBands.count = r.body.data[0][0];
 			var query = "START b1 = node:bands(id={bandId}) MATCH b1<-[r:is_member_of]-u1<-[r2:is_friends_with]->u2-[r3:is_member_of]->b2 RETURN b2";
 			if(options.skip) query += " SKIP " + options.skip;
 			if(options.limit) query += " LIMIT " + options.limit;
-			return app.executeCypherQuery(query, {bandId:keyValue});
+			return app.executeCypherQuery(query, {bandId:graphReq.keyValue});
 		})
 		.then(function(r) {
 			connBands.data = [];
