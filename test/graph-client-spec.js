@@ -794,6 +794,43 @@ function startTests() {
 
 	});
 
+	/*describe('Creating a two way connection twice', function() {
+
+		it('should not create a duplicate relationship', function() {
+			var done = false;
+			var u1, u2;
+			runs(function() {
+				u1 = User.create({name:'john'}, function() {
+					u2 = User.create({name:'jim'}, function() {
+						u1.friends.$connect(u2, function() {
+							var id1 = parseInt(u1.id)+0;
+							var id2 = parseInt(u2.id)+0;
+							u1 = null;
+							u2 = null;
+							u1 = User.get(id1, function() {
+								u2 = User.get(id2, function() {
+									u2.friends.$connect(u1, function() {
+										u1 = User.getAll(id1, function() {
+											u2 = User.getAll(id2, function() {
+												done = true;
+											});
+										});
+									});
+								});
+							});
+						});
+					});
+				});
+			});
+			waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+			runs(function() {
+				expect(u1.friends.data.length).toBe(1);
+				expect(u2.friends.data.length).toBe(1);
+			});
+		});
+
+	});*/
+
 	describe('Getting paged properties and counting them', function() {
 
 		var band;
