@@ -246,8 +246,10 @@
 								data[custProp].data[j] = {
 									resource: graphClientResourceFactory(data[custProp].data[j])
 								}
+								res[custProp].data.push(data[custProp].data[j]);
 							}
-							res[custProp] = $.extend({}, data[custProp]);
+							//res[custProp] = $.extend({}, data[custProp]);
+
 						}
 					}
 				}
@@ -505,6 +507,14 @@
 		for(var i in connectionProperties[entityName]) {
 			var connProp = connectionProperties[entityName][i];
 			res[connProp.property] = new GraphClientConnectionProperty(connProp);
+		}
+		if(entityName) {
+			for(var i in entities[entityName].customProperties) {
+				var custProp = entities[entityName].customProperties[i];
+				res[custProp] = {
+					data: []
+				}
+			}
 		}
 		return res;
 	}
