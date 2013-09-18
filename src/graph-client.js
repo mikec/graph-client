@@ -72,7 +72,7 @@
 	function defineCustomEndpoint(endpointName) {
 		GC[endpointName] = {};
 		GC[endpointName].data = [];
-		GC[endpointName].$getPage = function() {
+		GC[endpointName].$getPage = function(params) {
 			var pageNumber, success, error;
 			if(typeof(arguments[0]) == 'function') {
 				success = arguments[0]; error = arguments[1];
@@ -86,6 +86,11 @@
 			var numResults = GC[endpointName].data.length;
 			if(numResults > 0) {
 				urlParams.skip = numResults;
+			}
+			if(params) {
+				for(var i in params) {
+					urlParams[i] = params[i];
+				}
 			}
 
 			GC.service('GET', constructUrl(url, urlParams), null, function(d) {
