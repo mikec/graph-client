@@ -607,6 +607,15 @@ function startTests() {
 
 				});
 
+				describe('Deleting the user', function() {
+
+					it('should also delete the connection from band to user', function() {
+						u.$delete();
+						expect(b.members.data.length).toBe(0);
+					});
+
+				});
+
 			});
 
 			describe('Connecting the user and the band with relationship data', function() {

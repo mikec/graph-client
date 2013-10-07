@@ -322,11 +322,38 @@
 		}
 		GraphClientResource.prototype.$delete = function(success, error) {
 			var $this = this;
-			GC.service('DELETE', constructUrl(this.__endpoint + '/' + this.id), null, function(d) {
-				//remove all properties from the resource object
-				for(var i in $this) {
-					delete $this[i];
+			// disconnect all properties from connected resources
+			var connectedResources = [];
+			for(var i in $this) {
+				var p = $this[i];
+				if(p && p.data) {
+					for(var j in p.data) {
+						if(p.data[j].resource) {
+							connectedResources.push(p.data[j].resource);
+						}
+					}
 				}
+			}
+			for(var i in connectedResources) {
+				for(var j in connectedResources[i]) {
+					var p = connectedResources[i][j];
+					if(p && p.data) {
+						for(var k in p.data) {
+							if(p.data[k].resource === $this) {
+								p.data.splice(k,1);
+								p.count--;
+							}
+						}
+					}
+				}
+			}
+			// get the deletion endpoint url, before clearing the object
+			var url = this.__endpoint + '/' + this.id;
+			//remove all properties from the resource object
+			for(var i in $this) {
+				delete $this[i];
+			}
+			GC.service('DELETE', constructUrl(url), null, function(d) {
 				if(success) success(d);
 			}, function(err) {
 				if(error) error(err);
