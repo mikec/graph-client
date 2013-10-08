@@ -409,7 +409,13 @@
 
 			var d;
 			if(connRes.id > 0) {
-				d = { id: connRes.id };
+				d = {};
+				for(var prop in connRes) {
+					var val = connRes[prop];
+					if(isSimpleProp(val)) {
+						d[prop] = val;
+					}
+				}
 			} else if(data) {
 				d = data;
 			}
