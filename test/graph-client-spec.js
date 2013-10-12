@@ -799,6 +799,28 @@ function startTests() {
 
 			});
 
+			describe('Connecting a user to a newly created band with a specified id', function() {
+
+				it('should create the band with the specified id', function() {
+					var done = false;
+					var bandWithId;
+					runs(function() {
+						u.bands.$connect({id: 987654321, name:'coconut', genre:'fruit'}, function() {
+							bandWithId = Band.get(987654321, function() {
+								done = true;
+							});
+						});
+					});
+					waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+					runs(function() {
+						expect(bandWithId).toBeDefined;
+						expect(bandWithId.name).toBe('coconut');
+						expect(bandWithId.id).toBe('987654321');
+					});
+				});
+
+			});
+
 		});
 
 	});
