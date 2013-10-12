@@ -821,6 +821,26 @@ function startTests() {
 
 			});
 
+			describe('Connecting a user to an existing band with a specified id', function() {
+
+				it('should create the band with the specified id', function() {
+					var done = false;
+					runs(function() {
+						Band.create({id:757575757575, name:'sir junksalot'}, function() {
+							u.bands.$connect({id:757575757575}, function() {
+								done = true;
+							});
+						});
+					});
+					waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+					runs(function() {
+						expect(u.bands.data[0].resource.name).toBe('sir junksalot');
+						expect(u.bands.data[0].resource.id).toBe('757575757575');
+					});
+				});
+
+			});
+
 		});
 
 	});
