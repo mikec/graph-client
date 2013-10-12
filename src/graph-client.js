@@ -425,7 +425,12 @@
 				$.extend(connRelItem.relationship, relationshipData);
 				//add relationship data to inverse connection 
 				var relItm = connRes[this.connection.connectedEntityProperty].$find(res.id);
-				$.extend(relItm.relationship, relationshipData);
+				if(relItm) {
+					// TODO: why doesn't inverse relationship exist when calling $connect({id:id},{..})
+					//	     on a connection property that already contains the relationship??? Inverse
+					//		 relationship should always exist.
+					$.extend(relItm.relationship, relationshipData);
+				}
 			} else { // relationship does not exist
 				//add connections to start and end entities, and increase count
 				connRelItm = new GraphClientRelatedItem(connRes, relationshipData);
@@ -454,7 +459,12 @@
 					$.extend(connRelItem.relationship, d.relationship);
 					//add relationship data to inverse connection 
 					var relItm = connRes[$this.connection.connectedEntityProperty].$find(res.id);
-					$.extend(relItm.relationship, d.relationship);
+					if(relItm) {
+						// TODO: why doesn't inverse relationship exist when calling $connect({id:id},{..})
+						//	     on a connection property that already contains the relationship??? Inverse
+						//		 relationship should always exist.
+						$.extend(relItm.relationship, d.relationship);
+					}
 				}
 
 				connRes.__setState();
