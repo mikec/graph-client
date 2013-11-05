@@ -80,7 +80,7 @@ function startTests() {
 		});
 
 		it('should define start and end connection properties', function() {
-			expect(GC.connectionProperties['user'].length).toBe(4);
+			expect(GC.connectionProperties['user'].length).toBe(6);
 			expect(GC.connectionProperties['band'].length).toBe(3);
 			expect(GC.connectionProperties['song'].length).toBe(2);
 		});
@@ -881,6 +881,58 @@ function startTests() {
 		});
 
 	});*/
+
+	describe('Creating a connection with two entities of the same type, but with different endpoint names', function() {
+
+		it('should fill the correct connection properties with data, before the response', function() {
+			var done = false;
+			var user1, user2;
+			runs(function() {
+				user1 = User.create({name:'user_one'}, function() {
+					user2 = User.create({name:'user_two'}, function() {
+						user1.invited_friends.$connect(user2, function() {
+							done = true;
+						});
+					});
+				});
+			});
+			waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+			runs(function() {
+				expect(user1.invited_friends.count).toBe(1);
+				expect(user1.invited_friends.data.length).toBe(1);
+				expect(user2.inviters.count).toBe(1);
+				expect(user2.inviters.data.length).toBe(1);
+
+				expect(user1.inviters.data.length).toBe(0);
+				expect(user2.invited_friends.data.length).toBe(0);
+			});
+		});
+
+		it('should fill the correct connection properties with data, when retrieving the entities from the databse', function() {
+			var done = false;
+			var user1, user2, u1, u2;
+			runs(function() {
+				user1 = User.create({name:'user_one'}, function() {
+					user2 = User.create({name:'user_two'}, function() {
+						user1.invited_friends.$connect(user2, function() {
+							u1 = User.getAll(user1.id, function() {
+								u2 = User.getAll(user2.id, function() {
+									done = true;
+								});
+							});
+						});
+					});
+				});
+			});
+			waitsFor(function() { return done; }, 'server response', _asyncTimeout);
+			runs(function() {
+				expect(u1.invited_friends.count).toBe(1);
+				expect(u2.inviters.count).toBe(1);
+				expect(u1.inviters.count).toBe(0);
+				expect(u2.invited_friends.count).toBe(0);
+			});
+		});
+	});
 
 	describe('Getting paged properties and counting them', function() {
 

@@ -28,6 +28,7 @@ app.endpoint("thing")
    .endpoint("thing.parts", "has_part")
    .endpoint("band.songs", "song.owners", "is_owner_of")
    .endpoint("user.promotions", "song.promoters", "promoted")
+   .endpoint("user.invited_friends", "user.inviters", "invited")
 
    //custom connection property
    .endpoint("band.connectedBands", function(graphReq, options) {
