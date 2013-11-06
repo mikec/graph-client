@@ -549,6 +549,12 @@
 			res[this.connection.property].count = res[this.connection.property].data.length;
 		}
 
+		for(var i in data) {
+			if(data[i].__resourceType) {
+				data[i] = graphClientResourceFactory(data[i]);
+			}
+		}
+
 		var res = new GraphClientResource(data);
 		res.__resourceType = entityName;
 		res.__endpoint = endpointName;
