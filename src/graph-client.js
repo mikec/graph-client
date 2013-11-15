@@ -253,8 +253,7 @@
 								}
 								res[custProp].data.push(data[custProp].data[j]);
 							}
-							//res[custProp] = $.extend({}, data[custProp]);
-
+							res[custProp].count = data[custProp].count || 0;
 						}
 					}
 				}
