@@ -550,7 +550,7 @@
 		}
 
 		for(var i in data) {
-			if(data[i].__resourceType) {
+			if(data[i] && data[i].__resourceType) {
 				data[i] = graphClientResourceFactory(data[i]);
 			}
 		}
