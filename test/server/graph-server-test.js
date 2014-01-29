@@ -55,7 +55,7 @@ app.endpoint("thing")
    })
 
    .endpoint("topsongs", function(graphReq) {
-   		var query = "START s = node:songs('*:*') MATCH s<-[?:promoted]-u, s<-[:is_owner_of]-b RETURN s, b, COUNT(u) AS promo_count ORDER BY promo_count DESC, s.id";
+   		var query = "START s = node:songs('*:*') OPTIONAL MATCH s<-[:promoted]-u, s<-[:is_owner_of]-b RETURN s, b, COUNT(u) AS promo_count ORDER BY promo_count DESC, s.id";
    		if(!graphReq.skip) graphReq.skip = 0;
    		if(!graphReq.limit) graphReq.limit = 100;
    		query += " SKIP " + graphReq.skip;
